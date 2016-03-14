@@ -1,0 +1,81 @@
+#!/usr/bin/env python
+"""
+Get an exposure
+"""
+import os,sys
+import logging
+import argparse
+
+from archive.parser import VerboseAction, Parser
+
+def parser():
+    parser = Parser(description=__doc__)
+    parser.add_argument('expnum',type=int,help='Exposure number')
+    parser.add_argument('outfile',nargs='?',help='Output file name')
+    parser.add_argument('-a','--archive',choices=['local','desar2','noao','all'],
+                        help='source archive')
+    parser.add_argument('-f','--force',action='store_true',
+                        help='force overwrite')
+    parser.add_argument('-l','--link',action='store_true',
+                        help='link to local file')
+    parser.add_argument('--votable',
+                        help='NOAO VOTable inventory.')
+    return parser
+    
+
+if __name__ == "__main__":
+    args = parser().parse_args()
+
+    outfile = args.outfile
+    if not outfile:
+        outfile = './DECam_{expnum:08}.fits.fz'.format(expnum=args.expnum)
+
+    if os.path.exists(outfile) and not args.force:
+        logging.info("Found %s; skipping..."%outfile)
+        sys.exit(0)
+    elif os.path.exists(outfile) and args.force:
+        os.remove(outfile)
+        
+    if outfile:
+        outdir = os.path.dirname(outfile)
+        if not os.path.exists(outdir):
+            msg = "Cannot access directory: %s"%outdir
+            logging.error(msg)
+            sys.exit(1)
+    
+    if not args.archive or args.archive == 'local':
+        try: 
+            from archive import local
+            if args.link:
+                outfile = local.link_exposure(args.expnum,args.outfile)
+            else:
+                outfile = local.copy_exposure(args.expnum,args.outfile)
+        except Exception, e:
+            logging.info(e)
+            logging.info("Failed to get file locally\n")
+        if outfile and os.path.exists(outfile): 
+            logging.info("Got file locally")
+            sys.exit(0)
+    if not args.archive or args.archive == 'desar2':
+        try: 
+            from archive import desar2
+            outfile = desar2.download_exposure(args.expnum,args.outfile)
+        except Exception, e:
+            logging.info(e)
+            logging.info("Failed to get file from desar2\n")
+        if outfile and os.path.exists(outfile): 
+            logging.info("Got file from desar2")
+            sys.exit(0)
+    if not args.archive or args.archive == 'noao':
+        try: 
+            from archive import noao
+            outfile = noao.download_exposure(args.expnum,args.outfile,
+                                             votable=args.votable)
+        except Exception, e:
+            logging.info(e)
+            logging.info("Failed to get file from NOAO")
+        if outfile and os.path.exists(outfile): 
+            logging.info("Got file from NOAO")
+            sys.exit(0)
+
+    sys.exit(1)

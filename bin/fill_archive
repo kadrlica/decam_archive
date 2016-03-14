@@ -1,0 +1,96 @@
+#!/usr/bin/env python
+"""
+Get an exposure
+"""
+import os,sys
+import logging
+import argparse
+import subprocess
+import datetime
+import numpy as np
+import time
+
+from archive.parser import VerboseAction, Parser
+from archive.database import expnum2nite
+from archive import DIRNAME,BASENAME
+from archive import local,noao
+
+def parser():
+    parser = Parser(description=__doc__)
+    parser.add_argument('outdir',nargs='?',default='/data/des51.b/data/DTS/src',
+                        help='directory of local archive')
+    parser.add_argument('--explist',
+                        help='list of exposures to download')
+    parser.add_argument('--votable',
+                        help='NOAO inventory')
+    parser.add_argument('-n','--num',type=int,
+                        help='number of jobs to submit')
+    parser.add_argument('-q','--queue', default='vanilla',
+                        help='submit queue')
+    parser.add_argument('-s','--sleep',type=float,default=1,
+                        help='time between submissions')
+    return parser
+   
+
+if __name__ == "__main__":
+    args = parser().parse_args()
+
+    votable = args.votable
+    if not votable:
+        logging.info("Downloading NOAO inventory...")
+        today = datetime.date.today().strftime("%Y%m%d")
+        votfile = 'noao_votable_%s.vot'%today
+        logging.info("Writing %s..."%votfile)
+        noao.download_votable(votfile)
+        npyfile = votfile.replace('.vot','.npy')
+        logging.info("Writing %s..."%npyfile)
+        np.save(npyfile,noao.load_votable(votfile))
+        votable = npyfile
+
+    explist = args.explist
+    if not explist: explist = votable
+
+    if explist.endswith('.vot'):
+        data = noao.load_votable(explist)
+    elif explist.endswith('.npy'):
+        data = np.load(explist)
+    elif explist.endswith('.csv'):
+        data = np.recfromcsv(explist)
+    elif explist.endswith(('.txt','.dat')):
+        data = np.recfromtxt(explist)
+    else:
+        msg = "Unrecognized file type: %s"%(os.path.splitext(extlist)[-1])
+        raise ValueError(msg)
+
+    filename,nite,expnum = local.get_inventory(args.outdir)
+    sel = ~np.in1d(data['expnum'],expnum)
+
+    njobs = sel.sum()
+    for i,d in enumerate(data[sel]):
+        expnum = d['expnum']
+        nite = expnum2nite(expnum)
+        outfile = os.path.join(args.outdir,DIRNAME,BASENAME)
+        outfile = outfile.format(nite=nite,expnum=expnum)
+
+        if os.path.exists(outfile):
+            msg = "Found %s; skipping..."%os.path.basename(outfile)
+            logging.info(msg)
+            continue
+
+        outdir = os.path.dirname(outfile)
+        if not os.path.exists(outdir):
+            os.makedirs(outdir)
+
+        info = '({:>{width}}/{}): '.format(i,njobs,width=len(str(njobs)))
+        if True:
+            logfile = '%s.log'%expnum
+            sub = 'csub -o %s '%logfile
+        else:
+            sub = ''
+        cmd = 'get_exposure --link %s %s --votable %s'%(expnum,outfile,votable)
+        logging.info(info + sub + cmd)
+        if not args.dryrun: subprocess.call(sub+cmd,shell=True)    
+
+        time.sleep(args.sleep)
+        if args.num and i+1 >= args.num: break
+        if i >= 10: break
