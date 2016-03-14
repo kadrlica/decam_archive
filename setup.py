@@ -28,6 +28,7 @@ setup(
     scripts = ['bin/'],
     install_requires=[
         'python >= 2.7.0',
+        'psycopg2 >= 2.4.6',
     ],
     packages=['archive'],
     package_data={}
