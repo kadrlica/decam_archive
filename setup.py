@@ -4,9 +4,7 @@ import os
 try: from setuptools import setup
 except ImportError: from distutils.core import setup
 
-from standalone.get_version import get_version, write_version_py
-
-NAME = 'desdm_standalone'
+NAME = 'decam_archive'
 HERE = os.path.abspath(os.path.dirname(__file__))
 CLASSIFIERS = """\
 Development Status :: 2 - Pre-Alpha
@@ -16,8 +14,7 @@ Programming Language :: Python
 Natural Language :: English
 Topic :: Scientific/Engineering
 """
-VERSION = get_version()
-write_version_py(version=VERSION)
+VERSION = '1.0'
 
 def read(filename):
     return open(os.path.join(HERE,filename)).read()
@@ -25,16 +22,16 @@ def read(filename):
 setup(
     name=NAME
     version=VERSION,
-    url='https://bitbucket.org/kadrlica/desdm_standalone',
+    url='https://github.com/kadrlica/decam_archive',
     author='Alex Drlica-Wagner',
     author_email='kadrlica@fnal.gov',
     scripts = ['bin/'],
     install_requires=[
         'python >= 2.7.0',
     ],
-    packages=['standalone'],
-    package_data={'standalone':['config/*.cfg']}
-    description="Standalone DESDM processing pipeline.",
+    packages=['archive'],
+    package_data={}
+    description="File archive for DECam exposures.",
     long_description=read('README.md'),
     platforms='any',
     keywords='astronomy',
