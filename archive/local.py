@@ -39,12 +39,12 @@ def get_path(expnum):
     for arch in LOCAL_PATHS:
         filename = os.path.join(arch,DIRNAME,BASENAME)
         filename = filename.format(nite=nite,expnum=expnum)
-        logging.debug("Looking for %s"%filename)
+        logging.debug("Looking for: %s"%filename)
         if os.path.exists(filename):
             return filename
         filename = os.path.join(arch,DIRNAME,'src',BASENAME)
         filename = filename.format(nite=nite,expnum=expnum)
-        logging.debug("Looking for %s"%filename)
+        logging.debug("Looking for: %s"%filename)
         if os.path.exists(filename):
             return filename
     msg = "Exposure not found locally"

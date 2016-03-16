@@ -7,7 +7,7 @@ http://archive.noao.edu/search/query
 
 import os
 import re
-from datetime import date
+from datetime import date, datetime
 import time
 import subprocess
 import logging
@@ -31,14 +31,14 @@ AND exposure >= {exptime}
 AND dtacqnam like '%DECam_{expnum}.fits.fz'
 ORDER BY date_obs ASC LIMIT {limit}
 """
-NOAO_CURL = "curl --cert {cert} -k --show-error --output {outfile} {url}"
-NOAO_WGET = "wget -t 50 --retry-connrefused --waitretry 30 --progress=dot -e dotbytes=4M --timeout 120 -O {outfile} {url} || rm -f {outfile}"
+NOAO_CURL = "curl {certificate} -k --show-error --retry 7 --output {outfile} {url}"
+NOAO_WGET = "wget {certificate} -t 50 --retry-connrefused --waitretry 30 --progress=dot -e dotbytes=4M --timeout 30 -O {outfile} {url} || rm -f {outfile}"
 
 # An NOAO SSL certificate can be generated here:
 # https://portal-nvo-tmp.noao.edu/home/contrib
 # Add to wget with `--certificate {cert}`
 # Expires every two weeks...
-NOAO_CERT = ''
+NOAO_CERT = '/home/s1/kadrlica/projects/decam_archive/data/certificates/drlicawagnera_20160314.cert'
 
 def get_noao_query(**kwargs):
     kwargs = get_noao_query_kwargs(**kwargs)
@@ -102,6 +102,12 @@ def get_csrf_token(session, url=None):
     pattern = 'meta content="(.*)" name="csrf-token"'
     token = re.search(pattern,str(response.content)).group(1)
     return token
+
+def get_certificate(username=None,password=None):
+    if username is None or password is None:
+        cert = None
+    # Actually get the certificate...
+    return cert
 
 def request_votable(query=None):
     """
@@ -247,7 +253,21 @@ def get_file_url(expnum,votable=None):
 
 get_path = get_file_url
 
-def download_exposure(expnum,outfile=None,votable=None):
+def retry(cmd, retry=15):
+    for i in range(retry):
+        try:
+            now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            logging.info("\n--%s-- Attempt %i..."%(now,i+1))
+            return subprocess.check_call(cmd,shell=True)
+        except Exception, e:
+            logging.warning(e)
+            sleep = 30 + 2**i
+            logging.info("Sleeping %is..."%sleep)
+            time.sleep(sleep)
+    else:
+        raise Exception("Failed to execute command.")
+
+def download_exposure(expnum,outfile=None,votable=None,certificate=None):
     data = match_expnum(expnum,votable)
     path = data['reference']
     origsize = data['filesize']
@@ -255,20 +275,24 @@ def download_exposure(expnum,outfile=None,votable=None):
     if not outfile:
         outfile = 'DECam_{expnum:08d}.fits.fz'.format(expnum=expnum)
 
-    #cmd = NOAO_CURL.format(url=path,outfile=outfile,cert=NOAO_CERT)
-    cmd = NOAO_WGET.format(url=path,outfile=outfile)
-    logging.info(cmd)
-    out = subprocess.check_call(cmd,shell=True)
+    tool = 'curl'
+    if tool == 'wget':
+        cert = '--certificate %s'%certificate if certificate else ''
+        cmd = NOAO_WGET
+    elif tool == 'curl':
+        cert = '--cert %s'%certificate if certificate else ''
+        cmd = NOAO_CURL
+    cmd = cmd.format(url=path,outfile=outfile,certificate=cert)
 
+    logging.info(cmd)
+    retry(cmd,retry=15)
+             
     # Check the file size (might be unnecessary with wget)
     filesize = os.path.getsize(outfile)
     if origsize != filesize:
-        msg = "Downloaded filesize does not match."
-        msg += "\n  NOAO: %s"%origsize
-        msg += "\n  LOCAL: %s"%filesize
+        msg = "Filesize does not match: [%i/%i]."%(filesize,origsize)
         os.remove(outfile)
         raise Exception(msg)
-
     logging.debug("Filesize: %s MB"%(filesize//1024**2))
     return outfile
 

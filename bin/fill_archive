@@ -19,14 +19,14 @@ def parser():
     parser = Parser(description=__doc__)
     parser.add_argument('outdir',nargs='?',default='/data/des51.b/data/DTS/src',
                         help='directory of local archive')
+    parser.add_argument('--logdir',nargs='?',default=None,const='.',
+                        help='directory for log files.')
     parser.add_argument('--explist',
                         help='list of exposures to download')
     parser.add_argument('--votable',
-                        help='NOAO inventory')
+                        help='NOAO inventory table')
     parser.add_argument('-n','--num',type=int,
                         help='number of jobs to submit')
-    parser.add_argument('-q','--queue', default='vanilla',
-                        help='submit queue')
     parser.add_argument('-s','--sleep',type=float,default=1,
                         help='time between submissions')
     return parser
@@ -62,10 +62,14 @@ if __name__ == "__main__":
         msg = "Unrecognized file type: %s"%(os.path.splitext(extlist)[-1])
         raise ValueError(msg)
 
+    logdir = args.logdir
+    if logdir and not os.path.exists(logdir): 
+        os.makedirs(logdir)
+
     filename,nite,expnum = local.get_inventory(args.outdir)
     sel = ~np.in1d(data['expnum'],expnum)
 
-    njobs = sel.sum()
+    njobs = max(sel.sum(),args.num)
     for i,d in enumerate(data[sel]):
         expnum = d['expnum']
         nite = expnum2nite(expnum)
@@ -81,16 +85,16 @@ if __name__ == "__main__":
         if not os.path.exists(outdir):
             os.makedirs(outdir)
 
+        # Build the command
         info = '({:>{width}}/{}): '.format(i,njobs,width=len(str(njobs)))
-        if True:
-            logfile = '%s.log'%expnum
-            sub = 'csub -o %s '%logfile
-        else:
-            sub = ''
+
+        log = '-o %s '%os.path.join(logdir,'%s.log'%expnum) if logdir else ''
+        sub = 'csub {log}'.format(log=log)
+
         cmd = 'get_exposure --link %s %s --votable %s'%(expnum,outfile,votable)
+
         logging.info(info + sub + cmd)
         if not args.dryrun: subprocess.call(sub+cmd,shell=True)    
 
         time.sleep(args.sleep)
         if args.num and i+1 >= args.num: break
-        if i >= 10: break
