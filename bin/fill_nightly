@@ -1,0 +1,87 @@
+#!/usr/bin/env python
+"""
+Get exposures released on a given nite.
+"""
+import os,sys
+import logging
+import argparse
+import subprocess
+import datetime
+from dateutil.parser import parse as dateparse
+import numpy as np
+import time
+
+from archive.parser import VerboseAction, Parser
+from archive.database import expnum2nite
+from archive import DIRNAME,BASENAME
+from archive import local,noao
+
+def parser():
+    parser = Parser(description=__doc__)
+    parser.add_argument('-d','--date',default=None,type=int,
+                        help='release date')
+    parser.add_argument('--outdir',default='/data/des51.b/data/DTS/src',
+                        help='directory of local archive')
+    parser.add_argument('--logdir',nargs='?',default=None,const='.',
+                        help='directory for log files.')
+    parser.add_argument('-s','--sleep',type=float,default=1,
+                        help='time between submissions')
+    return parser
+   
+
+if __name__ == "__main__":
+    args = parser().parse_args()
+
+    date = str(args.date)
+    if date is None: 
+        date = datetime.date.today().strftime('%Y%m%d')
+    tstart = date
+    tstop = (dateparse(date) + datetime.timedelta(1)).strftime('%Y%m%d')
+
+    logging.info("Filling archive: %s"%date)
+
+    logging.info("Downloading NOAO inventory released %s..."%date)
+
+    query=noao.get_noao_query(tstart=tstart,tstop=tstop)
+
+    vodir = './votable'
+    if not os.path.exists(vodir): os.makedirs(vodir)
+    votable = os.path.join(vodir,'noao_votable_%s.npy'%date)
+    logging.info("Writing %s..."%votable)
+    noao.download_votable(votable,query=query)
+    data = np.load(votable)
+
+    logdir = args.logdir
+    if logdir and not os.path.exists(logdir): 
+        os.makedirs(logdir)
+
+    filename,nites,expnums = local.get_inventory(args.outdir)
+    sel = ~np.in1d(data['expnum'],expnums)
+
+    njobs = sel.sum()
+    for i,d in enumerate(data[sel]):
+        expnum = d['expnum']
+        outfile = os.path.join(args.outdir,DIRNAME,BASENAME)
+        outfile = outfile.format(nite=expnum2nite(expnum),expnum=expnum)
+
+        if os.path.exists(outfile):
+            msg = "Found %s; skipping..."%os.path.basename(outfile)
+            logging.info(msg)
+            continue
+
+        outdir = os.path.dirname(outfile)
+        if not os.path.exists(outdir):
+            os.makedirs(outdir)
+
+        # Build the command
+        info = '({:>{width}}/{}): '.format(i,njobs,width=len(str(njobs)))
+
+        log = '-o %s '%os.path.join(logdir,'%s.log'%expnum) if logdir else ''
+        sub = 'csub {log}'.format(log=log)
+
+        cmd = 'get_exposure --link %s %s --votable %s'%(expnum,outfile,votable)
+
+        logging.info(info + sub + cmd)
+        if not args.dryrun: subprocess.call(sub+cmd,shell=True)    
+
+        time.sleep(args.sleep)
