@@ -8,6 +8,7 @@ http://archive.noao.edu/search/query
 import os
 import re
 from datetime import date, datetime
+from dateutil.parser import parse as dateparse
 import time
 import subprocess
 import logging
@@ -22,10 +23,10 @@ NOAO_URL = "http://archive.noao.edu/search/"
 NOAO_QUERY = """
 SELECT {columns}
 FROM voi.siap 
-WHERE (start_date >= '2012-11-01' and release_date <= '{today:%Y-%m-%d}')
-AND (proctype = 'RAW')
-AND (telescope = 'ct4m' AND instrument = 'decam')
-AND (obstype = 'object')
+WHERE (telescope = 'ct4m' AND instrument = 'decam')
+AND (proctype = 'RAW' AND obstype = 'object')
+AND (start_date >= '2012-11-01')
+AND (release_date between '{tstart:%Y-%m-%d}' and '{tstop:%Y-%m-%d}')
 AND left(filter, 1) in ({filters})
 AND exposure >= {exptime}
 AND dtacqnam like '%DECam_{expnum}.fits.fz'
@@ -58,7 +59,8 @@ def get_noao_query_kwargs(**kwargs):
         'md5sum'
     ]
 
-    defaults = dict(today=date.today(),exptime=60,filters=('g','r','i','z','Y'),
+    defaults = dict(tstart=dateparse('2012-11-01'), tstop=date.today(),
+                    exptime=60,filters=('g','r','i','z','Y'),
                     limit=250000,expnum='%')
 
     defaults['columns'] = [
@@ -84,6 +86,9 @@ def get_noao_query_kwargs(**kwargs):
 
     kwargs['columns'] = map(str.lower,kwargs['columns'])
     kwargs['columns'] += [c for c in required if c not in kwargs['columns']]
+
+    kwargs['tstart'] = dateparse(str(kwargs['tstart']))
+    kwargs['tstop']  = dateparse(str(kwargs['tstop']))
 
     if not isinstance(kwargs['columns'],basestring):
         kwargs['columns'] = ','.join(kwargs['columns'])
@@ -139,6 +144,7 @@ def request_votable(query=None):
     response = session.get(url,headers=headers)
     response.raise_for_status()
 
+    logging.debug('\n'+query)
     if not query: query = get_noao_query()
         
     #http://archive.noao.edu/search/send_advanced_query
@@ -170,7 +176,7 @@ def get_votable(query):
 
     return votable
 
-def download_votable(outfile, query=None):
+def download_votable(outfile, query=None, **kwargs):
     """ Download the inventory of NOAO exposures. """
     base,ext = os.path.splitext(outfile)
 
@@ -194,6 +200,7 @@ def load_votable(votable):
 
 def create_expnum(data):
     """Convert original file name to exposure number"""
+    if not len(data): return np.array([],dtype='S8')
     col = 'original_file'
     dtype ='S%i'%(len(max(data[col], key=len)))
     filenames = data[col].data.astype(dtype)
@@ -202,19 +209,9 @@ def create_expnum(data):
     expnum = np.char.rpartition(splitexts,'_')[:,-1].astype(int)
     return expnum
 
-### def create_nite(data):
-###     """ This is a nitemare. """
-###     col = 'date_obs'
-###     datetime = np.array(data[col],dtype='datetime64')
-###     date,sep,time = np.char.partition(data[col].astype('S30'),' ').T
-###     nite = np.char.replace(date,'-','').astype(int)
-###     date = np.array(np.char.add(date,' 00:00:00.0'),dtype='datetime64')
-###     last = datetime - date < np.timedelta64(14,'h')
-###     nite[last] -= 1
-###     return nite
-
 def create_nite(data):
     """Convert start_date to nite"""
+    if not len(data): return np.array([],dtype='S8')
     col = 'start_date'
     dtype ='S%i'%(len(max(data[col], key=len)))
     nite = data[col].data.astype(dtype)
@@ -253,7 +250,7 @@ def get_file_url(expnum,votable=None):
 
 get_path = get_file_url
 
-def retry(cmd, retry=15):
+def retry(cmd, retry=25):
     for i in range(retry):
         try:
             now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -261,7 +258,7 @@ def retry(cmd, retry=15):
             return subprocess.check_call(cmd,shell=True)
         except Exception, e:
             logging.warning(e)
-            sleep = 30 + 2**i
+            sleep = i*30
             logging.info("Sleeping %is..."%sleep)
             time.sleep(sleep)
     else:
@@ -285,7 +282,7 @@ def download_exposure(expnum,outfile=None,votable=None,certificate=None):
     cmd = cmd.format(url=path,outfile=outfile,certificate=cert)
 
     logging.info(cmd)
-    retry(cmd,retry=15)
+    retry(cmd,retry=25)
              
     # Check the file size (might be unnecessary with wget)
     filesize = os.path.getsize(outfile)
@@ -297,6 +294,7 @@ def download_exposure(expnum,outfile=None,votable=None,certificate=None):
     return outfile
 
 copy_exposure = download_exposure
+    
 
 if __name__ == "__main__":
     from parser import Parser

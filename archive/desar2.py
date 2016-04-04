@@ -14,7 +14,10 @@ from archive import DIRNAME, BASENAME
 from archive.database import expnum2nite
 
 DESAR2_URL = "https://desar2.cosmology.illinois.edu/DESFiles/desarchive/DTS/raw"
-DESAR2_WGET = "wget -t 50 --retry-connrefused --waitretry 30 --progress=dot -e dotbytes=4M --timeout 120 -O {outfile} {url} || rm -f {outfile}"
+DESAR2_WGET = "wget -t 50 --retry-connrefused --no-check-certificate --waitretry 30 --progress=dot -e dotbytes=4M --timeout 120 -O {outfile} {url} || rm -f {outfile}"
+
+WGET_EXP = DESAR2_WGET
+WGET_NITE = "wget  -X . -r -A DECam_\*fits.fz  -np --level=2 --no-check-certificate -N -nH --cut-dirs=4 --progress=dot -e dotbytes=4M {url}/{nite}"
 
 
 def get_path(expnum):
@@ -32,6 +35,16 @@ def download_exposure(expnum,outfile=None):
     return outfile
 
 copy_exposure = download_exposure
+
+def download_nite(nite,outdir=None):
+    if not outdir: outdir = './'
+    os.chdir(outdir)
+    cmd = WGET_NITE
+    cmd.format(url=DESAR2_URL,nite=nite)
+    loggging.info(cmd)
+    subprocess.check_call(cmd,shell=True)
+    return outdir
+
 
 if __name__ == "__main__":
     import argparse
