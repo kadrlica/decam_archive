@@ -3,7 +3,7 @@
 Generic python script.
 """
 __author__ = "Alex Drlica-Wagner"
-__version__ = "1.0"
+__version__ = "0.1.0"
 
 DIRNAME = '{nite:>08}'
 BASENAME = 'DECam_{expnum:>08}.fits.fz'
