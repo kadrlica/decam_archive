@@ -3,6 +3,7 @@ import sys
 import os
 try: from setuptools import setup
 except ImportError: from distutils.core import setup
+import versioneer
 
 NAME = 'decam_archive'
 HERE = os.path.abspath(os.path.dirname(__file__))
@@ -14,14 +15,14 @@ Programming Language :: Python
 Natural Language :: English
 Topic :: Scientific/Engineering
 """
-VERSION = '1.0'
 
 def read(filename):
     return open(os.path.join(HERE,filename)).read()
 
 setup(
-    name=NAME
-    version=VERSION,
+    name=NAME,
+    version=versioneer.get_version(),
+    cmdclass=versioneer.get_cmdclass(),
     url='https://github.com/kadrlica/decam_archive',
     author='Alex Drlica-Wagner',
     author_email='kadrlica@fnal.gov',
