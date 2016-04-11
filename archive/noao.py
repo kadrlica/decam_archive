@@ -60,7 +60,7 @@ def get_noao_query_kwargs(**kwargs):
     ]
 
     defaults = dict(tstart=dateparse('2012-11-01'), tstop=date.today(),
-                    exptime=60,filters=('g','r','i','z','Y'),
+                    exptime=30,filters=('g','r','i','z','Y'),
                     limit=250000,expnum='%')
 
     defaults['columns'] = [
@@ -144,8 +144,8 @@ def request_votable(query=None):
     response = session.get(url,headers=headers)
     response.raise_for_status()
 
-    logging.debug('\n'+query)
     if not query: query = get_noao_query()
+    logging.debug('\n'+query)
         
     #http://archive.noao.edu/search/send_advanced_query
     url = os.path.join(NOAO_URL,'send_advanced_query')

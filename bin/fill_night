@@ -57,8 +57,12 @@ if __name__ == "__main__":
 
     filename,nites,expnums = local.get_inventory(args.outdir)
     sel = ~np.in1d(data['expnum'],expnums)
-
     njobs = sel.sum()
+
+    if not njobs:
+        logging.info("No new exposures found; exiting...")
+        sys.exit()
+
     for i,d in enumerate(data[sel]):
         expnum = d['expnum']
         outfile = os.path.join(args.outdir,DIRNAME,BASENAME)

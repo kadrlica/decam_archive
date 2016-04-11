@@ -86,7 +86,7 @@ if __name__ == "__main__":
             os.makedirs(outdir)
 
         # Build the command
-        info = '({:>{width}}/{}): '.format(i,njobs,width=len(str(njobs)))
+        info = '({:>{width}}/{}): '.format(i+1,njobs,width=len(str(njobs)))
 
         log = '-o %s '%os.path.join(logdir,'%s.log'%expnum) if logdir else ''
         sub = 'csub {log}'.format(log=log)
