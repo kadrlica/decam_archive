@@ -14,7 +14,7 @@ from archive.parser import VerboseAction, Parser
 
 def parser():
     parser = Parser(description=__doc__)
-    parser.add_argument('outdir',nargs='?',default='/data/des51.b/data/DTS/src',
+    parser.add_argument('--outdir',default='/data/des51.b/data/DTS/src',
                         help='directory of local archive')
     parser.add_argument('-m','--min-size',default=250,type=float,
                         help='minimum file size (MB)')
