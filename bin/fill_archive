@@ -17,7 +17,7 @@ from archive import local,noao
 
 def parser():
     parser = Parser(description=__doc__)
-    parser.add_argument('outdir',nargs='?',default='/data/des51.b/data/DTS/src',
+    parser.add_argument('--outdir',default='/data/des51.b/data/DTS/src',
                         help='directory of local archive')
     parser.add_argument('--logdir',nargs='?',default=None,const='.',
                         help='directory for log files.')
@@ -98,3 +98,5 @@ if __name__ == "__main__":
 
         time.sleep(args.sleep)
         if args.num and i+1 >= args.num: break
+
+    logging.info('Done.')

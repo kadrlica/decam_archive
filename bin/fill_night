@@ -38,9 +38,7 @@ if __name__ == "__main__":
     tstart = date
     tstop = (dateparse(date) + datetime.timedelta(1)).strftime('%Y%m%d')
 
-    logging.info("Filling archive: %s"%date)
-
-    logging.info("Downloading NOAO inventory released %s..."%date)
+    logging.info("NOAO release date %s..."%date)
 
     query=noao.get_noao_query(tstart=tstart,tstop=tstop)
 
@@ -58,6 +56,9 @@ if __name__ == "__main__":
     filename,nites,expnums = local.get_inventory(args.outdir)
     sel = ~np.in1d(data['expnum'],expnums)
     njobs = sel.sum()
+
+    logging.info("NITES: %s"%(np.unique(data['nite'])))
+    logging.info("EXPNUMS: %i - %i"%(np.min(expnums),np.max(expnums)))
 
     if not njobs:
         logging.info("No new exposures found; exiting...")
