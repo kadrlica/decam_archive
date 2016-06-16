@@ -2,7 +2,11 @@
 
 umask 002
 
+date
 echo "Preparing to prune and fill archive ..."
+
+SRCDIR=/data/des51.b/data/DTS/src/
+cd $SRCDIR
 
 # Setup the cvmfs script
 source /cvmfs/des.opensciencegrid.org/users/kadrlica/gridsetup.sh
@@ -18,6 +22,7 @@ VERSION=master
 export DECAM_ARCHIVE=$SRCDIR/decam_archive/$VERSION
 export PYTHONPATH=$DECAM_ARCHIVE:$PYTHONPATH
 export PATH=$DECAM_ARCHIVE/bin:$PATH
+export PATH=/home/s1/kadrlica/bin:$PATH # for csub
 
 prune_archive --outdir=$SRCDIR
 fill_archive --outdir=$SRCDIR
