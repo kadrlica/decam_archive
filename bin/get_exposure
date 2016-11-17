@@ -12,7 +12,8 @@ def parser():
     parser = Parser(description=__doc__)
     parser.add_argument('expnum',type=int,help='Exposure number')
     parser.add_argument('outfile',nargs='?',help='Output file name')
-    parser.add_argument('-a','--archive',choices=['local','desar2','noao','all'],
+    parser.add_argument('-a','--archive', default='all',
+                        choices=['local','desar2','noao','all'],
                         help='source archive')
     parser.add_argument('-f','--force',action='store_true',
                         help='force overwrite')
@@ -42,8 +43,9 @@ if __name__ == "__main__":
             msg = "Cannot access directory: %s"%outdir
             logging.error(msg)
             sys.exit(1)
-    
-    if not args.archive or args.archive == 'local':
+
+    if not args.archive: args.archive = 'all'
+    if args.archive in ('all','local'):
         try: 
             from archive import local
             if args.link:
@@ -56,7 +58,7 @@ if __name__ == "__main__":
         if outfile and os.path.exists(outfile): 
             logging.info("Got file locally")
             sys.exit(0)
-    if not args.archive or args.archive == 'desar2':
+    if args.archive in ('all','desar2'):
         try: 
             from archive import desar2
             outfile = desar2.download_exposure(args.expnum,args.outfile)
@@ -66,7 +68,7 @@ if __name__ == "__main__":
         if outfile and os.path.exists(outfile): 
             logging.info("Got file from desar2")
             sys.exit(0)
-    if not args.archive or args.archive == 'noao':
+    if args.archive in ('all','noao'):
         try: 
             from archive import noao
             outfile = noao.download_exposure(args.expnum,args.outfile,

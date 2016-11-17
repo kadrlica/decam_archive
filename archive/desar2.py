@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Download exposures from DESDM desar2
+Download exposures from DESDM desar2.
 
 Expects DESDM username/password to be stored in .netrc file.
 """
@@ -11,7 +11,7 @@ import subprocess
 import logging
 
 from archive import DIRNAME, BASENAME
-from archive.database import expnum2nite
+from archive.sispi import expnum2nite
 
 DESAR2_URL = "https://desar2.cosmology.illinois.edu/DESFiles/desarchive/DTS/raw"
 DESAR2_WGET = "wget -t 50 --retry-connrefused --no-check-certificate --waitretry 30 --progress=dot -e dotbytes=4M --timeout 120 -O {outfile} {url} || rm -f {outfile}"

@@ -4,7 +4,6 @@ connection infromation from '.desservices.ini' file.
 
 For more documentation on desservices, see here:
 https://opensource.ncsa.illinois.edu/confluence/x/lwCsAw
-
 """
 
 import os
@@ -69,19 +68,6 @@ class Database(object):
         data = self.execute(query)
         names = self.get_columns()
         return np.rec.array(data,names=names)
-
-    def get_nite(self,expnum):
-        query = "select date from exposure where id = '%s'"%(expnum)
-        data = self.query2recarray(query)
-        date = data[0]['date']
-        nite = int(date.strftime('%Y%m%d'))
-        if date.hour < 13: nite -= 1
-        return nite
-    
-def expnum2nite(expnum):
-    db = Database()
-    db.connect()
-    return db.get_nite(expnum)
     
 if __name__ == "__main__":
     import argparse

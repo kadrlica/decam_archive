@@ -10,7 +10,8 @@ import glob
 
 import numpy as np
 
-from database import expnum2nite
+from archive.sispi import expnum2nite
+from archive.utils import filename2nite,filename2expnum
 from archive import DIRNAME,BASENAME
 
 LOCAL_PATHS = [
@@ -24,15 +25,19 @@ def get_inventory(path=None):
     else: paths = LOCAL_PATHS
     files = []
     for p in paths:
-        files += glob.glob(p+'/*/DECam_*.fits.fz')
-        files += glob.glob(p+'/*/src/DECam_*.fits.fz')
-    data = np.array(files)
-    data = np.sort(data)
-    base,sep,exp = np.char.rpartition(data,'/').T
-    nite = np.char.rpartition(base,'/')[:,-1].astype(int)
-    expnum = np.char.partition(np.char.rpartition(exp,'_')[:,-1],'.')[:,0].astype(int)
-    return data, nite, expnum
-
+        files += glob.glob(p+'/[0-9]*[0-9]/DECam_[0-9]*[0-9].fits.fz')
+        files += glob.glob(p+'/[0-9]*[0-9]/src/DECam_[0-9]*[0-9].fits.fz')
+    files = np.atleast_1d(files)
+    files.sort()
+    nite   = filename2nite(files)
+    expnum = filename2expnum(files)
+    #data = np.array(files)
+    #data = np.sort(data)
+    #base,sep,exp = np.char.rpartition(data,'/').T
+    #nite = np.char.rpartition(base,'/')[:,-1].astype(int)
+    #expnum = np.char.partition(np.char.rpartition(exp,'_')[:,-1],'.')[:,0].astype(int)
+    return np.rec.fromarrays([files, nite, expnum],
+                             names=['filename','nite','expnum'])
 
 def get_path(expnum):
     nite = expnum2nite(expnum)

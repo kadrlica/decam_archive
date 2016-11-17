@@ -8,14 +8,7 @@ echo "Preparing to prune and fill archive ..."
 SRCDIR=/data/des51.b/data/DTS/src/
 cd $SRCDIR
 
-# Setup the cvmfs script
-source /cvmfs/des.opensciencegrid.org/users/kadrlica/gridsetup.sh
-
-# Really, just need numpy and psycopg2...
-setup readlinePython 6.2.4.1+8
-setup astropy 0.4.2+2
-setup requests 2.7.0+1
-setup finalcut Y2A1+2
+export PATH=/cvmfs/des.opensciencegrid.org/fnal/anaconda2/envs/default/bin:$PATH
 
 # Standalone archive code
 VERSION=master
@@ -24,7 +17,8 @@ export PYTHONPATH=$DECAM_ARCHIVE:$PYTHONPATH
 export PATH=$DECAM_ARCHIVE/bin:$PATH
 export PATH=/home/s1/kadrlica/bin:$PATH # for csub
 
-prune_archive --outdir=$SRCDIR
+#prune_archive --outdir=$SRCDIR
+#link_archive --outdir=$SRCDIR
 fill_archive --outdir=$SRCDIR
 
 exit

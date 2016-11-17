@@ -30,6 +30,7 @@ setup(
     install_requires=[
         'python >= 2.7.0',
         'psycopg2 >= 2.4.6',
+        'pandas',
     ],
     packages=['archive'],
     package_data={}

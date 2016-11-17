@@ -7,7 +7,7 @@ http://archive.noao.edu/search/query
 
 import os
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from dateutil.parser import parse as dateparse
 import time
 import subprocess
@@ -18,6 +18,8 @@ from io import StringIO, BytesIO
 import numpy as np
 import numpy.lib.recfunctions as recfuncs
 import astropy.io.votable as vot
+
+from archive.utils import date2nite, filename2expnum
 
 NOAO_URL = "http://archive.noao.edu/search/"
 NOAO_QUERY = """
@@ -60,12 +62,11 @@ def get_noao_query_kwargs(**kwargs):
     ]
 
     defaults = dict(tstart=dateparse('2012-11-01'), tstop=date.today(),
-                    exptime=30,filters=('g','r','i','z','Y'),
+                    exptime=30,filters=('u','g','r','i','z','Y'),
                     limit=250000,expnum='%')
 
     defaults['columns'] = [
         'reference', 
-        'dtpropid', 
         'release_date', 
         'start_date', 
         'date_obs', 
@@ -200,23 +201,27 @@ def load_votable(votable):
 
 def create_expnum(data):
     """Convert original file name to exposure number"""
-    if not len(data): return np.array([],dtype='S8')
+    if not len(data): return np.array([],dtype=int)
     col = 'original_file'
-    dtype ='S%i'%(len(max(data[col], key=len)))
-    filenames = data[col].data.astype(dtype)
-    basenames = np.char.rpartition(filenames,'/')[:,-1]
-    splitexts = np.char.strip(basenames,'.fits.fz')
-    expnum = np.char.rpartition(splitexts,'_')[:,-1].astype(int)
-    return expnum
+    return filename2expnum(data[col].data)
 
-def create_nite(data):
-    """Convert start_date to nite"""
+def create_nite_safe(data):
+    """Convert 'date_obs' to nite. This is safer (using one
+    'date2nite' converter) but slower option."""
+    col = 'date_obs'
+    return date2nite(data[col])
+
+def create_nite_fast(data):
+    """Convert 'start_date' to 'nite'. This is the faster option since
+    it relies on NOAO to calculate the nite as 'start_date'."""
     if not len(data): return np.array([],dtype='S8')
     col = 'start_date'
     dtype ='S%i'%(len(max(data[col], key=len)))
     nite = data[col].data.astype(dtype)
     nite = np.char.replace(nite,'-','')
     return nite
+
+create_nite = create_nite_fast
 
 def vot2npy(votable):
     if isinstance(votable, np.ndarray):

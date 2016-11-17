@@ -50,7 +50,7 @@ class Parser(argparse.ArgumentParser):
         self.add_argument('--version', action='version',
                           version='maglites v'+__version__,
                           help="print version number and exit")
-
+        
 
 logger = logging.getLogger()
 handler = logging.StreamHandler()

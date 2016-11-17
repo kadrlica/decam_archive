@@ -13,19 +13,21 @@ import time
 
 from archive.parser import VerboseAction, Parser
 from archive.database import expnum2nite
-from archive import DIRNAME,BASENAME
+from archive import BASEDIR,DIRNAME,BASENAME
 from archive import local,noao
 
 def parser():
     parser = Parser(description=__doc__)
     parser.add_argument('-d','--date',default=None,type=int,
                         help='release date')
-    parser.add_argument('--outdir',default='/data/des51.b/data/DTS/src',
+    parser.add_argument('--outdir',default=BASEDIR,
                         help='directory of local archive')
     parser.add_argument('--logdir',nargs='?',default=None,const='.',
                         help='directory for log files.')
     parser.add_argument('-s','--sleep',type=float,default=1,
                         help='time between submissions')
+    parser.add_argument('-n','--njobs',type=int,default=5,
+                        help='number of simultaneous jobs')
     return parser
    
 
@@ -38,13 +40,13 @@ if __name__ == "__main__":
     tstart = date
     tstop = (dateparse(date) + datetime.timedelta(1)).strftime('%Y%m%d')
 
-    logging.info("NOAO release date %s..."%date)
+    logging.info("NOAO release period: %s -- %s..."%(tstart,tstop))
 
     query=noao.get_noao_query(tstart=tstart,tstop=tstop)
 
     vodir = './votable'
     if not os.path.exists(vodir): os.makedirs(vodir)
-    votable = os.path.join(vodir,'noao_votable_%s.npy'%date)
+    votable = os.path.join(vodir,'noao_nightly_%s.npy'%date)
     logging.info("Writing %s..."%votable)
     noao.download_votable(votable,query=query)
     data = np.load(votable)
@@ -53,12 +55,12 @@ if __name__ == "__main__":
     if logdir and not os.path.exists(logdir): 
         os.makedirs(logdir)
 
-    filename,nites,expnums = local.get_inventory(args.outdir)
-    sel = ~np.in1d(data['expnum'],expnums)
+    inv = local.get_inventory(args.outdir)
+    sel = ~np.in1d(data['expnum'],inv['expnum'])
     njobs = sel.sum()
 
     logging.info("NITES: %s"%(np.unique(data['nite'])))
-    logging.info("EXPNUMS: %i - %i"%(np.min(expnums),np.max(expnums)))
+    logging.info("EXPNUMS: %i - %i"%(np.min(data['expnum']),np.max(data['expnum'])))
 
     if not njobs:
         logging.info("No new exposures found; exiting...")
@@ -82,7 +84,8 @@ if __name__ == "__main__":
         info = '({:>{width}}/{}): '.format(i,njobs,width=len(str(njobs)))
 
         log = '-o %s '%os.path.join(logdir,'%s.log'%expnum) if logdir else ''
-        sub = 'csub {log}'.format(log=log)
+        njobs = '-n %s '%args.njobs
+        sub = 'csub {log} {njobs}'.format(log=log,njobs=njobs)
 
         cmd = 'get_exposure --link %s %s --votable %s'%(expnum,outfile,votable)
 

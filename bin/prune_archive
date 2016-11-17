@@ -4,17 +4,17 @@ Prune the archive of corrupted exposures.
 """
 import os,sys
 import logging
-import subprocess
-import glob
 
 import numpy as np
 import fitsio
 
 from archive.parser import VerboseAction, Parser
+from archive.local import get_inventory
+from archive import DIRNAME,BASENAME,BASEDIR
 
 def parser():
     parser = Parser(description=__doc__)
-    parser.add_argument('--outdir',default='/data/des51.b/data/DTS/src',
+    parser.add_argument('--outdir',default=BASEDIR,
                         help='directory of local archive')
     parser.add_argument('-m','--min-size',default=250,type=float,
                         help='minimum file size (MB)')
@@ -24,14 +24,17 @@ def parser():
 if __name__ == "__main__":
     args = parser().parse_args()
 
-    files = sorted(glob.glob(args.outdir+'/[0-9]*[0-9]/DECam_[0-9]*.fits.fz'))
+    logging.info("Loading local inventory...")
+    inv = get_inventory(args.outdir)
+    files = inv['filename']
     nfiles = len(files)
-
+    width = len(str(nfiles))
+    
     logging.info("Pruning %s files..."%nfiles)
     for i,f in enumerate(files):
         if i%1000==0: 
-            msg = '(%-07i/%-07i): %s'%(i,nfiles,f)
-            logging.info(msg)
+            info = '({:>{width}}/{}): {}'.format(i+1,nfiles,f,width=width)
+            logging.info(info)
 
         # Ignore (trust) links for now
         if os.path.islink(f): continue
