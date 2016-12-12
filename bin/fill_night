@@ -12,7 +12,7 @@ import numpy as np
 import time
 
 from archive.parser import VerboseAction, Parser
-from archive.database import expnum2nite
+from archive.sispi import expnum2nite
 from archive import BASEDIR,DIRNAME,BASENAME
 from archive import local,noao
 
@@ -57,12 +57,12 @@ if __name__ == "__main__":
 
     inv = local.get_inventory(args.outdir)
     sel = ~np.in1d(data['expnum'],inv['expnum'])
-    njobs = sel.sum()
+    num = sel.sum()
 
     logging.info("NITES: %s"%(np.unique(data['nite'])))
     logging.info("EXPNUMS: %i - %i"%(np.min(data['expnum']),np.max(data['expnum'])))
 
-    if not njobs:
+    if not num:
         logging.info("No new exposures found; exiting...")
         sys.exit()
 
@@ -81,7 +81,7 @@ if __name__ == "__main__":
             os.makedirs(outdir)
 
         # Build the command
-        info = '({:>{width}}/{}): '.format(i,njobs,width=len(str(njobs)))
+        info = '({:>{width}}/{}): '.format(i,num,width=len(str(num)))
 
         log = '-o %s '%os.path.join(logdir,'%s.log'%expnum) if logdir else ''
         njobs = '-n %s '%args.njobs
