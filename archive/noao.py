@@ -34,7 +34,7 @@ AND exposure >= {exptime}
 AND dtacqnam like '%DECam_{expnum}.fits.fz'
 ORDER BY date_obs ASC LIMIT {limit}
 """
-NOAO_CURL = "curl {certificate} -k --show-error --retry 7 --output {outfile} {url}"
+NOAO_CURL = "curl {certificate} -k --show-error --retry 5 --output {outfile} {url}"
 NOAO_WGET = "wget {certificate} -t 50 --retry-connrefused --waitretry 30 --progress=dot -e dotbytes=4M --timeout 30 -O {outfile} {url} || rm -f {outfile}"
 
 # An NOAO SSL certificate can be generated here:
