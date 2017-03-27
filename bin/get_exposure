@@ -39,6 +39,7 @@ if __name__ == "__main__":
         
     if outfile:
         outdir = os.path.dirname(outfile)
+        if outdir == '': outdir = './'
         if not os.path.exists(outdir):
             msg = "Cannot access directory: %s"%outdir
             logging.error(msg)

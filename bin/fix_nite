@@ -63,6 +63,9 @@ if __name__ == "__main__":
                 outfile = outfile.format(nite=row.nite_sispi,expnum=row.expnum)
                 outdir = os.path.dirname(outfile)
 
+                # This shouldn't happen....
+                #if infile == outfile: continue
+
                 cmd = 'mv {} {}'.format(infile,outfile)
                 logging.debug(cmd)
                 if not args.dryrun:
@@ -71,5 +74,3 @@ if __name__ == "__main__":
                     subprocess.call(cmd,shell=True)
 
         i += chunk
-    
-    

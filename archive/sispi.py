@@ -18,8 +18,9 @@ class SISPI(Database):
         self.connect()
 
     def get_date(self,expnum):
-        """Get date information for specified exposure number(s). Uses
-        SQL to convert SISPI 'date' to a 'nite' string.
+        """Get date information for input exposure number(s). Creates
+        a temporary table and joins. Uses SQL to convert SISPI 'date'
+        to a 'nite' string.
         
         Parameters:
         -----------
@@ -32,9 +33,11 @@ class SISPI(Database):
         #query = """SELECT id as expnum, date,
         #TO_CHAR(date - '12 hours'::INTERVAL, 'YYYYMMDD')::INTEGER AS nite
         #FROM exposure WHERE id in (%s)"""
+
+        #        TO_CHAR(date - '12 hours'::INTERVAL, 'YYYYMMDD') AS nite
         query = """SELECT id as expnum, date,
-        TO_CHAR(date - '12 hours'::INTERVAL, 'YYYYMMDD') AS nite
-        FROM (SELECT UNNEST('{%s}'::int[]) as id) tmp
+        TO_CHAR(date-'12 hours'::INTERVAL,'YYYYMMDD')::INT AS nite
+        FROM (SELECT UNNEST('{%s}'::INT[]) as id) tmp
         INNER JOIN exposure USING (id)"""
 
         scalar = np.isscalar(expnum)

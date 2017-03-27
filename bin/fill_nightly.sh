@@ -9,7 +9,7 @@ if [ $# == 1 ] ; then  STARTDATE=$1 ; fi
 
 umask 002
 
-echo "Getting data for night $STARTDATE ..."
+echo "Getting data for night ${STARTDATE}..."
 
 SRCDIR=/data/des51.b/data/DTS/src/
 cd $SRCDIR
@@ -30,5 +30,9 @@ export PATH=/home/s1/kadrlica/bin:$PATH # for csub
 # Try moving back an additional day
 STARTDATE=`date --date="2 days ago"  +%Y%m%d`
 fill_night --date=$STARTDATE --outdir=$SRCDIR -v
+
+# Load the exposure table
+echo "Preparing to load exposure table..."
+load_exposure_table
 
 exit

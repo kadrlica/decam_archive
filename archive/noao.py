@@ -39,9 +39,10 @@ NOAO_WGET = "wget {certificate} -t 50 --retry-connrefused --waitretry 30 --progr
 
 # An NOAO SSL certificate can be generated here:
 # https://portal-nvo-tmp.noao.edu/home/contrib
+# https://archive.noao.edu/security/get_user_certificate
 # Add to wget with `--certificate {cert}`
 # Expires every two weeks...
-NOAO_CERT = '/home/s1/kadrlica/projects/decam_archive/data/certificates/drlicawagnera_20160314.cert'
+NOAO_CERT = '/home/s1/kadrlica/projects/decam_archive/data/certificates/drlicawagnera_20170313.cert'
 
 def get_noao_query(**kwargs):
     kwargs = get_noao_query_kwargs(**kwargs)
@@ -280,9 +281,11 @@ def download_exposure(expnum,outfile=None,votable=None,certificate=None):
     tool = 'curl'
     if tool == 'wget':
         cert = '--certificate %s'%certificate if certificate else ''
+        #cert = '--certificate %s'%(certificate if certificate else NOAO_CERT)
         cmd = NOAO_WGET
     elif tool == 'curl':
         cert = '--cert %s'%certificate if certificate else ''
+        #cert = '--cert %s'%(certificate if certificate else NOAO_CERT)
         cmd = NOAO_CURL
     cmd = cmd.format(url=path,outfile=outfile,certificate=cert)
 

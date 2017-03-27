@@ -4,13 +4,16 @@ Some utility functions
 """
 __author__ = "Alex Drlica-Wagner"
 
-import numpy as np
-import pandas as pd
+import os.path
 from datetime import timedelta
 import warnings
 
+import numpy as np
+import pandas as pd
+import healpy as hp
+
 def date2nite(date, exact=True):
-    """ Convert a date string or datetime (array) into a nite.
+    """ Convert a date string or datetime (array) into an integer nite.
 
     Parameters:
     -----------
@@ -19,7 +22,7 @@ def date2nite(date, exact=True):
     
     Returns:
     --------
-    nite: Return nite string.
+    nite: Return nite (integer or array).
     """
     scalar = np.isscalar(date)
     date = pd.DatetimeIndex(np.atleast_1d(date))
@@ -37,6 +40,9 @@ def date2nite(date, exact=True):
     if exact:
         exact = (utc == utc.normalize())
         nite[exact] = utc[exact].strftime('%Y%m%d')
+
+    # Convert to integer
+    nite = nite.astype(int)
 
     if scalar:
         return np.asscalar(nite)
@@ -80,6 +86,10 @@ def filename2expnum(filename):
         return np.asscalar(expnum)
     return expnum
 
+def get_datadir():
+    from os.path import dirname, abspath
+    return os.path.join(dirname(abspath(__file__)),'data')
+
 def filename2nite(filename):
     """Convert filename to exposure number.
     
@@ -116,3 +126,27 @@ def filename2nite(filename):
     if scalar:
         return np.asscalar(nite)
     return nite
+
+
+def phi2lon(phi): return np.degrees(phi)
+def lon2phi(lon): return np.radians(lon)
+
+def theta2lat(theta): return 90. - np.degrees(theta)
+def lat2theta(lat): return np.radians(90. - lat)
+
+def pix2ang(nside, pix):
+    """
+    Return (lon, lat) in degrees instead of (theta, phi) in radians
+    """
+    theta, phi =  hp.pix2ang(nside, pix)
+    lon = phi2lon(phi)
+    lat = theta2lat(theta)
+    return lon, lat
+
+def ang2pix(nside, lon, lat):
+    """
+    Input (lon, lat) in degrees instead of (theta, phi) in radians
+    """
+    theta = np.radians(90. - lat)
+    phi = np.radians(lon)
+    return hp.ang2pix(nside, theta, phi)

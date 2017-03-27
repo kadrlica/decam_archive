@@ -11,7 +11,7 @@ import numpy as np
 import time
 
 from archive.parser import VerboseAction, Parser
-from archive.database import expnum2nite
+from archive.sispi import expnum2nite
 from archive import BASEDIR,DIRNAME,BASENAME
 from archive import local,noao
 

@@ -3,7 +3,7 @@
 umask 002
 
 date
-echo "Preparing to prune and fill archive ..."
+echo "Preparing to prune and fill archive..."
 
 SRCDIR=/data/des51.b/data/DTS/src/
 cd $SRCDIR
@@ -17,8 +17,12 @@ export PYTHONPATH=$DECAM_ARCHIVE:$PYTHONPATH
 export PATH=$DECAM_ARCHIVE/bin:$PATH
 export PATH=/home/s1/kadrlica/bin:$PATH # for csub
 
-#prune_archive --outdir=$SRCDIR
-#link_archive --outdir=$SRCDIR
+prune_archive --outdir=$SRCDIR
 fill_archive --outdir=$SRCDIR
+prune_archive --outdir=$SRCDIR
+
+# Load the exposure table
+echo "Preparing to load exposure table..."
+load_exposure_table
 
 exit
