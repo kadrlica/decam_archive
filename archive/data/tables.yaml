@@ -1,0 +1,450 @@
+exposure:
+  table: exposure
+  columns:
+    AIRMASS:
+      type: FLOAT4
+    ALTITUDE:
+      type: FlOAT4
+    BAND:
+      type: VARCHAR(5)
+      index: BTREE
+    CAMSHUT:
+      type: VARCHAR(10)
+    #CAMSYM:
+    #  type: VARCHAR(1)
+    DARKTIME:
+      type: FLOAT4
+    DATE_OBS:
+      type: TIMESTAMP
+    DECDEG:
+      type: FLOAT4
+    #DETECTOR:
+    #  type: VARCHAR(20)
+    DETSIZE:
+      type: VARCHAR(40)
+    DIMMSEE:
+      type: FLOAT4
+    EXPREQ:
+      type: FLOAT4
+    EXPTIME:
+      type: FLOAT4
+    EXPNUM:
+      type: INTEGER
+      index: PK
+    FIELD:
+      type: VARCHAR(30)
+    FILENAME:
+      type: VARCHAR(50)
+    FILEPATH:
+      type: VARCHAR(80)
+    FILETYPE:
+      type: VARCHAR(30)
+    FILTER:
+      type: VARCHAR(40)
+    FILTPOS: 
+      type: VARCHAR(40)
+    HA:
+      type: VARCHAR(20)
+    HUMIDITY:
+      type: FLOAT4
+    HPIX:        
+      type: BIGINT
+    INSTRUMENT:
+      type: VARCHAR(10)
+    LATITUDE:
+      type: FLOAT4
+    LONGITUDE:
+      type: FLOAT4
+    MJD_OBS:
+      type: FLOAT8
+    NEXTEND:
+      type: INTEGER
+    NITE:
+      type: INTEGER
+      index: BTREE
+    OBJECT:
+      type: VARCHAR(80)
+    OBSERVATORY:
+      type: VARCHAR(80)
+    OBSERVER:
+      type: VARCHAR(100)
+    OBSTYPE:
+      type: VARCHAR(80)
+    #PHOTFLAG:
+    #  type: INTEGER
+    PIXSCAL1:
+      type: FLOAT4
+    PIXSCAL2:
+      type: FLOAT4
+    PRESSURE:
+      type: FLOAT4
+    PROCTYPE:
+      type: VARCHAR(10)
+    PRODTYPE:
+      type: VARCHAR(10)
+    PROGRAM:
+      type: VARCHAR(140)
+    PROPID:
+      type: VARCHAR(20)
+    PROPOSER:
+      type: VARCHAR(20)
+    RADEG: 
+      type: FLOAT4
+    RADESYS:
+      type: VARCHAR(10)
+    TDECDEG:
+      type: FLOAT4
+    TELDEC:
+      type: VARCHAR(20)
+    TELEQUIN:
+      type: FLOAT4
+    TELESCOPE:
+      type: VARCHAR(20)
+    TELFOCUS:
+      type: VARCHAR(80)
+    TELRA:
+      type: VARCHAR(20)
+    TELSTAT:
+      type: VARCHAR(80)
+    TILING:
+      type: FLOAT4
+    TIMESYS:
+      type: VARCHAR(10)
+    TIME_OBS:
+      type: TIME
+    TRADEG:
+      type: FLOAT4
+    WINDDIR:
+      type: FLOAT4
+    WINDSPD:
+      type: FLOAT4
+    ZD:
+      type: FLOAT4
+  indexes:
+    RA_DEC:
+      query: CREATE INDEX {table}_{name}_idx ON {table} (RADEG,DECDEG);
+
+catalog:
+  table: catalog
+  columns: 
+    EXPNUM:
+      type: INTEGER
+    CCDNUM:
+      type: INTEGER
+    FILENAME:
+      type: VARCHAR(60)
+    ATTNUM:
+      type: INTEGER
+    REQNUM:
+      type: INTEGER
+    STATUS:
+      type: VARCHAR(20)
+
+archive:
+  table: se_archive_info
+  columns: 
+    EXPNUM:
+      type: INTEGER
+    CCDNUM:
+      type: INTEGER
+    BAND:
+      type: VARCHAR(5)
+    ATTNUM:
+      type: INTEGER
+    REQNUM:
+      type: INTEGER
+    PATH:
+      type: VARCHAR(256)
+    FILENAME:
+      type: VARCHAR(60)
+      index: PK
+    FILETYPE:
+      type: VARCHAR(30)
+    COMPRESSION:
+      type: VARCHAR(5)
+    STATUS:
+      type: VARCHAR(30)
+  indexes:
+    EXP_CCD:
+      query: CREATE INDEX {table}_{name}_idx ON {table} (EXPNUM,CCDNUM);
+      
+objects:
+  table: se_objects
+  columns: 
+    ALPHAWIN_J2000:
+      type: FLOAT8
+    A_IMAGE:
+      type: FLOAT4
+    ATTNUM:
+      type: INTEGER
+    BACKGROUND:
+      type: FLOAT4
+    BAND:
+      type: VARCHAR(5)
+      index: BTREE
+    B_IMAGE:
+      type: FLOAT4
+    #CHI2_DETMODEL:
+    #  type: FLOAT4
+    #CHI2_MODEL:
+    #  type: FLOAT4
+    CCDNUM:
+      type: INTEGER
+    CHI2_PSF:
+      type: FLOAT4     
+    CLASS_STAR:
+      type: FLOAT4   
+    #CONCENTRATION_MODEL:
+    #  type: FLOAT4 
+    DEC:
+      type: FLOAT8
+    DELTAWIN_J2000:
+      type: FLOAT8      
+    #DURATION_ANALYSIS   FLOAT4   
+    #ELLIP1ERRMODEL_WORLD:
+    #  type: FLOAT4 
+    #ELLIP1MODEL_WORLD:
+    #  type: FLOAT4    
+    #ELLIP2ERRMODEL_WORLD:
+    #  type: FLOAT4 
+    #ELLIP2MODEL_WORLD:
+    #  type: FLOAT4    
+    #ELLIPCORRMODEL_WORLD:
+    #  type: FLOAT4 
+    ELLIPTICITY:
+      type: FLOAT4          
+    #EQUINOX   FLOAT4          
+    ERRAWIN_WORLD:
+      type: FLOAT4    
+    #ERRA_IMAGE:
+    #  type: FLOAT4       
+    ERRBWIN_WORLD:
+      type: FLOAT4    
+    #ERRB_IMAGE:
+    #  type: FLOAT4       
+    ERRTHETAWIN_J2000:
+      type: FLOAT4 
+    #ERRTHETA_IMAGE:
+    #  type: FLOAT4    
+    ERRX2WIN_WORLD:
+      type: FLOAT4    
+    ERRX2_WORLD:
+      type: FLOAT8       
+    ERRXYWIN_WORLD:
+      type: FLOAT4    
+    ERRXY_WORLD:
+      type: FLOAT8       
+    ERRY2WIN_WORLD:
+      type: FLOAT4    
+    ERRY2_WORLD:
+      type: FLOAT8       
+    #ERRZEROPOINT:
+    #  type: FLOAT4      
+    EXPNUM:
+      type: INTEGER
+    FILENAME:
+      type: VARCHAR(60)
+    FLAGS:
+      type: INTEGER
+    #FLAGS_DETMODEL:
+    #  type: INTEGER
+    #FLAGS_MODEL:
+    #  type: INTEGER
+    FLAGS_WEIGHT:
+      type: INTEGER
+    FLUXERR_APER_1:
+      type: FLOAT4   
+    FLUXERR_APER_10:
+      type: FLOAT4  
+    FLUXERR_APER_11:
+      type: FLOAT4  
+    FLUXERR_APER_12:
+      type: FLOAT4  
+    FLUXERR_APER_2:
+      type: FLOAT4   
+    FLUXERR_APER_3:
+      type: FLOAT4   
+    FLUXERR_APER_4:
+      type: FLOAT4   
+    FLUXERR_APER_5:
+      type: FLOAT4   
+    FLUXERR_APER_6:
+      type: FLOAT4   
+    FLUXERR_APER_7:
+      type: FLOAT4   
+    FLUXERR_APER_8:
+      type: FLOAT4   
+    FLUXERR_APER_9:
+      type: FLOAT4   
+    FLUXERR_AUTO:
+      type: FLOAT4     
+    #FLUXERR_DETMODEL:
+    #  type: FLOAT4 
+    #FLUXERR_HYBRID:
+    #  type: FLOAT4   
+    #FLUXERR_ISO:
+    #  type: FLOAT4      
+    #FLUXERR_MODEL:
+    #  type: FLOAT4    
+    #FLUXERR_PETRO:
+    #  type: FLOAT4    
+    FLUXERR_PSF: 
+      type: FLOAT4      
+    #FLUXERR_SPHEROID:
+    #  type: FLOAT4 
+    FLUX_APER_1:
+      type: FLOAT4      
+    FLUX_APER_10:
+      type: FLOAT4     
+    FLUX_APER_11:
+      type: FLOAT4     
+    FLUX_APER_12:
+      type: FLOAT4     
+    FLUX_APER_2:
+      type: FLOAT4      
+    FLUX_APER_3:
+      type: FLOAT4
+    FLUX_APER_4:
+      type: FLOAT4      
+    FLUX_APER_5:
+      type: FLOAT4      
+    FLUX_APER_6:
+      type: FLOAT4      
+    FLUX_APER_7:
+      type: FLOAT4      
+    FLUX_APER_8:
+      type: FLOAT4      
+    FLUX_APER_9:
+      type: FLOAT4      
+    FLUX_AUTO:
+      type: FLOAT4        
+    #FLUX_DETMODEL:
+    #  type: FLOAT4    
+    #FLUX_HYBRID:
+    #  type: FLOAT4      
+    #FLUX_ISO:
+    #  type: FLOAT4         
+    #FLUX_MODEL:
+    #  type: FLOAT4       
+    #FLUX_PETRO:
+    #  type: FLOAT4       
+    FLUX_PSF:
+      type: FLOAT4         
+    FLUX_RADIUS:
+      type: FLOAT4      
+    #FLUX_SPHEROID:
+    #  type: FLOAT4    
+    FWHMPSF_WORLD:
+      type: FLOAT4
+    FWHM_WORLD:
+      type: FLOAT4    
+    IMAFLAGS_ISO:
+      type: INTEGER
+    ISOAREA_WORLD:
+      type: FLOAT4   
+    KRON_RADIUS:
+      type: FLOAT4     
+    MAG_POINTSOURCE:
+      type: FLOAT4
+    #MU_EFF_MODEL:
+    #  type: FLOAT4       
+    MU_MAX:
+      type: FLOAT4
+    #MU_MAX_MODEL:
+    #  type: FLOAT4    
+    #MU_MEAN_MODEL:
+    #  type: FLOAT4   
+    MU_THRESHOLD:
+      type: FLOAT4    
+    NITE:
+      type: INTEGER
+    #NITER_DETMODEL:
+    #  type: INTEGER
+    #NITER_MODEL:
+    #  type: INTEGER
+    NITER_PSF:
+      type: INTEGER
+    #NLOWDWEIGHT_ISO
+    #  type: INTEGER
+    #NLOWWEIGHT_ISO
+    #  type: INTEGER
+    OBJECT_NUMBER:
+      type: INTEGER
+    #PETRO_RADIUS:
+    #  type: FLOAT4
+    RA:
+      type: FLOAT8
+    REQNUM:
+      type: INTEGER
+    #SOFTID:
+    #  type: INTEGER
+    SPREADERR_MODEL:
+      type: FLOAT4      
+    SPREAD_MODEL:
+      type: FLOAT4         
+    THETA_IMAGE:
+      type: FLOAT4      
+    THRESHOLD:
+      type: FLOAT4        
+    X2WIN_WORLD:
+      type: FLOAT4      
+    X2_WORLD:
+      type: FLOAT4         
+    XMAX_IMAGE:
+      type: FLOAT4       
+    XMIN_IMAGE:
+      type: FLOAT4       
+    XWIN_IMAGE:
+      type: FLOAT4       
+    XYWIN_WORLD:
+      type: FLOAT4      
+    XY_WORLD:
+      type: FLOAT4         
+    X_IMAGE:
+      type: FLOAT4          
+    Y2WIN_WORLD:
+      type: FLOAT4      
+    Y2_WORLD:
+      type: FLOAT4         
+    YMAX_IMAGE:
+      type: FLOAT4       
+    YMIN_IMAGE:
+      type: FLOAT4
+    YWIN_IMAGE:
+      type: FLOAT4
+    Y_IMAGE:
+      type: FLOAT4
+  indexes:
+    PRIMARY_KEY:
+      query: ALTER TABLE {table} ADD CONSTRAINT {table}_pkey PRIMARY KEY (FILENAME,OBJECT_NUMBER);
+    RA_DEC:
+      query: CREATE INDEX {table}_{name}_idx ON {table} (RA,DEC);
+
+zeropoints:
+  table: zeropoints
+  columns: 
+    FILENAME:
+      type: VARCHAR(60)
+      index: BTREE
+    CATALOGNAME:
+      type: VARCHAR(60)
+      index: BTREE
+    BAND:
+      type: VARCHAR(5)
+    EXPNUM:
+      type: INTEGER
+    CCDNUM:
+      type: INTEGER
+    BAND:
+      type: VARCHAR(5)
+    SOURCE:
+      type: VARCHAR(30)
+    MAG_ZERO:
+      type: FLOAT4
+    SIGMA_MAG_ZERO:
+      type: FLOAT4
+    FLAG:
+      type: INTEGER
+  indexes:
+    EXP_CCD:
+      query: CREATE INDEX {table}_{name}_idx ON {table} (EXPNUM,CCDNUM);
