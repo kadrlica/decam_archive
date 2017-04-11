@@ -59,9 +59,13 @@ if __name__ == "__main__":
     sel = ~np.in1d(data['expnum'],inv['expnum'])
     num = sel.sum()
 
-    logging.info("NITES: %s"%(np.unique(data['nite'])))
-    logging.info("EXPNUMS: %i - %i"%(np.min(data['expnum']),np.max(data['expnum'])))
-
+    if not len(data):
+        logging.info("No data returned by query; exiting...")
+        sys.exit()
+    else:
+        logging.info("NITES: %s"%(np.unique(data['nite'])))
+        logging.info("EXPNUMS: %i - %i"%(data['expnum'].min(),data['expnum'].max()))
+        
     if not num:
         logging.info("No new exposures found; exiting...")
         sys.exit()

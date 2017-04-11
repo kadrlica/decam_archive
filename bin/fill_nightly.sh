@@ -32,7 +32,7 @@ STARTDATE=`date --date="2 days ago"  +%Y%m%d`
 fill_night --date=$STARTDATE --outdir=$SRCDIR -v
 
 # Load the exposure table
-echo "Preparing to load exposure table..."
-load_exposure_table
+echo "Submitting load_exposure_table..."
+csub load_exposure_table
 
 exit
