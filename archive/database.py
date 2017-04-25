@@ -138,7 +138,7 @@ class Database(object):
 
         Parameters:
         -----------
-        tablename: The name of the table to load.
+        table    : The name of the table to load.
         data     : The data object to load.
         """
         if not isinstance(data,pd.DataFrame):
@@ -240,7 +240,7 @@ class Database(object):
         return np.all(self.select(query))
 
     def drop_table(self,tablename):
-        query = "drop table %s;"%tablename
+        query = "DROP TABLE IF EXISTS %s;"%tablename
         return self.execute(query)
 
     def get_description(self,query=None):

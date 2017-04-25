@@ -1,0 +1,8 @@
+BLISS_Y17T1:
+  name: BLISS_Y17T1
+  query: >
+    select expnum from exposure where
+    propid != '2012B-0001' and propid not like '%-9999'
+    and band in ('g','r','i','z')
+    and ABS(glat) > 10
+    and exptime >= 30;

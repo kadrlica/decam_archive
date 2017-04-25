@@ -9,16 +9,18 @@ import logging
 import tempfile
 from collections import OrderedDict as odict
 import copy
+import getpass
 
 import numpy as np
 import pandas as pd
 import yaml
 import dateutil.parser
+import datetime
 import fitsio
 import healpy
 import numpy.lib.recfunctions as recfn
 
-from astropy.coordinates import Angle
+from astropy.coordinates import Angle, SkyCoord
 from astropy.io.fits import Header
 import astropy.units as u
 
@@ -31,6 +33,10 @@ def hms2deg(angle):
 
 def dms2deg(angle):
     return Angle(angle,unit=u.deg).deg
+
+def cel2gal(ra,dec):
+    gal = SkyCoord(ra,dec,unit=u.deg,frame='icrs').galactic
+    return gal.l.value, gal.b.value
 
 class DEXP(Database):
     """ SISPI database access. """
@@ -166,7 +172,7 @@ class Table(object):
     def create_table(self):
         return self.db.create_table(**self.config)
 
-    def drop_table(self,force=False):
+    def drop_table(self):
         self.db.drop_table(self.tablename)
 
     def grant_table(self):
@@ -177,6 +183,7 @@ class Table(object):
         self.db.create_indexes(**self.config)
         
     def build_table(self,force=True):
+        if force: self.drop_table()
         self.create_table()
         self.create_indexes()
         self.grant_table()
@@ -285,7 +292,7 @@ class ExposureTable(Table):
         --------
         hdr : The dictionary of exposure information
         """
-        hdr = dict(header)
+        hdr = dict([(k,header.get(k)) for k in header.keys()])
         for k,v in hdr.items():
             if isinstance(v,basestring):
                 hdr[k] = v.strip()
@@ -312,6 +319,11 @@ class ExposureTable(Table):
         # Can't have NaNs in int column
         try: hdr['HPIX'] = int(ang2pix(4096,hdr['RADEG'],hdr['DECDEG']))
         except KeyError: hdr['HPIX'] = -1
+
+        # Convert to Galactic coordinates
+        glon,glat = cel2gal(hdr['RADEG'],hdr['DECDEG'])
+        hdr['GLON'] = glon
+        hdr['GLAT'] = glat
 
         hdr['FILEPATH'] = archive.local.get_path(hdr['EXPNUM'])
         hdr['FILETYPE'] = 'raw'
@@ -679,6 +691,66 @@ class ZeropointsTable(Table):
 
     def read_zeropoints(self, filepath):
         pd.read_csv(filepath)
+
+class ProctagTable(Table):
+    """Object for managing the proctag table."""
+    _filename  = os.path.join(get_datadir(),'tables.yaml')
+    _section   = 'proctag'
+    _tags      = os.path.join(get_datadir(),'proctag.yaml')
+
+    def __init__(self):
+        super(ProctagTable,self).__init__(self._filename,self._section)
+        self._load_tags()
+
+    def _load_tags(self):
+        self.tags = yaml.load(open(self._tags))
+
+    def load_proctag(self, tag, query=None, expnum=None):
+        """ Create the proctag and load to db. Use tag lookup query.
+
+        Parameters:
+        -----------
+        tag:    tag to create
+        query:  explicit query to select expnums
+        expnum: explicit list of expnums
+
+        Returns:
+        --------
+        proctag: array of proctag values
+        """
+        proctag = self.create_proctag(tag,query,expnum)
+        self.db.load_data(self.tablename,proctag)
+        return proctag
+
+    def create_proctag(self, tag, query=None, expnum=None):
+        """ Create the proctag data array.
+        
+        Parameters:
+        -----------
+        tag:     tag to create
+        query:   explicit query to select expnums
+        expnum:  explicit list of expnums
+
+        Returns:
+        --------
+        proctag: array of proctag values
+        """
+        if expnum is not None and query is not None:
+            msg = "Cannot specify 'query' and 'expnum'."
+            raise Exception(msg)
+
+        if expnum is None:
+            if query is None: query = self.tags[tag]['query']
+            expnum = self.db.query2rec(query)['expnum']
+        else:
+            expnum = np.atleast_1d(expnum)
+        
+        data = np.recarray(len(expnum),dtype=self.get_dtypes())
+        data['expnum'] = expnum
+        data['tag'] = tag
+        data['created_date'] = datetime.datetime.now()
+        data['created_by'] = getpass.getuser()
+        return data
 
 def expnum2nite(expnum):
     """Standalone call to the nite from DExp

@@ -43,6 +43,10 @@ exposure:
       type: VARCHAR(40)
     FILTPOS: 
       type: VARCHAR(40)
+    GLAT:
+      type: FLOAT4
+    GLON:
+      type: FLOAT4
     HA:
       type: VARCHAR(20)
     HUMIDITY:
@@ -448,3 +452,18 @@ zeropoints:
   indexes:
     EXP_CCD:
       query: CREATE INDEX {table}_{name}_idx ON {table} (EXPNUM,CCDNUM);
+
+proctag:
+  table: proctag
+  columns: 
+    CREATED_BY:
+      type: VARCHAR(30)
+    CREATED_DATE:
+      type: TIMESTAMP
+    EXPNUM:
+      type: INTEGER
+    TAG:
+      type: VARCHAR(30)
+  indexes:
+    PRIMARY_KEY:
+      query: ALTER TABLE {table} ADD CONSTRAINT {table}_pkey PRIMARY KEY (EXPNUM,TAG);
