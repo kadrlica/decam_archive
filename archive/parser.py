@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Generic python script.
+Argument parsing and logging.
 """
 __author__ = "Alex Drlica-Wagner"
 
@@ -22,6 +22,15 @@ class SpecialFormatter(logging.Formatter):
     def format(self, record):
         self._fmt = self.FORMATS.get(record.levelno, self.FORMATS['DEFAULT'])
         return logging.Formatter.format(self, record)
+
+def setup_logging(level=logging.INFO):
+    logger = logging.getLogger()
+    handler = logging.StreamHandler()
+    handler.setFormatter(SpecialFormatter())
+    logger.addHandler(handler)
+    logger.setLevel(level)
+
+setup_logging()
 
 class VerboseAction(argparse._StoreTrueAction):
     """
@@ -50,13 +59,20 @@ class Parser(argparse.ArgumentParser):
         self.add_argument('--version', action='version',
                           version='maglites v'+__version__,
                           help="print version number and exit")
-        
 
-logger = logging.getLogger()
-handler = logging.StreamHandler()
-handler.setFormatter(SpecialFormatter())
-logger.addHandler(handler)
-logger.setLevel(logging.INFO)
+
+class LoaderParser(Parser):
+    def __init__(self,*args,**kwargs):
+        super(LoaderParser,self).__init__(*args,**kwargs)
+        self.add_argument('expnum',const=None,nargs='*',type=int,
+                          help='explicit exposures to load')
+        self.add_argument('-f','--force',action='store_true',
+                          help='overwrite existing database entries')
+        self.add_argument('-k','--chunk',type=int,default=100,
+                          help='chunk size for upload')
+        self.add_argument('-n','--nproc',type=int,default=20,
+                          help='number of parallel processes')
+
 
 if __name__ == "__main__":
     import argparse

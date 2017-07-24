@@ -45,6 +45,7 @@ def desc2dtype(desc):
             if size > 0:
                 dt = (name, 'S%i'%size)
             else:
+                # These are TEXT objects of undefined length
                 dt = (name, object)
         elif code == psycopg2.extensions.UNICODE:
             # Probably doesn't get called because STRING is a catchall
@@ -88,7 +89,7 @@ class Database(object):
             filename=os.path.expandvars("$PWD/.desservices.ini")
         else:
             filename=os.path.expandvars("$HOME/.desservices.ini")
-        logging.debug('.desservices.ini: %s'%filename)
+        logging.debug('Connecting with credentials in %s'%filename)
 
         # ConfigParser throws "no section error" if file does not exist...
         # That's confusing, so 'open' to get a more understandable error
@@ -130,8 +131,7 @@ class Database(object):
         except Exception as e:
             self.reset()
             raise(e)
-
-        self.execute(query, values)
+    #    self.execute(query, values)
 
     def load_data(self, table, data, option=None):
         """Load a numpy.recarray or pandas.DataFrame into a table.
@@ -220,6 +220,36 @@ class Database(object):
         for index in indexes:
             logging.debug(index)
             self.execute(index)
+
+    def drop_index_query(self,**kwargs):
+        table = kwargs.get('table')
+        columns = kwargs.get('columns')
+        indexes = kwargs.get('indexes',None)
+
+        template = "DROP INDEX IF EXISTS {name};"
+        query = []
+        for k,v in sorted(columns.items()):
+            method = v.get('index',None)
+            if method is None: continue
+            if method == 'PK': continue
+            name = "%s_%s_idx"%(table.lower(),k.lower())
+            q = template.format(name=name)
+            query.append(q)
+
+        if indexes is not None:
+            for k,v in sorted(indexes.items()):
+                if 'PRIMARY KEY' in v: continue
+                name = "%s_%s_idx"%(table.lower(),k.lower())
+                q = template.format(name=name)
+                query.append(q)
+
+        return query
+
+    def drop_indexes(self, **kwargs):
+        queries = self.drop_index_query(**kwargs)
+        for query in queries:
+            logging.debug(query)
+            self.execute(query)
             
     def create_table(self,query=None,**kwargs):
         if not query:

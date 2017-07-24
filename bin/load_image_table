@@ -1,0 +1,21 @@
+#!/usr/bin/env python
+"""
+Load image header information.
+"""
+import os,sys
+import logging
+import argparse
+
+from archive.parser import LoaderParser
+from archive.dexp import create_table, finalize_table
+from archive.dexp import load_image_table, ImageTable
+
+if __name__ == "__main__":
+    args = LoaderParser().parse_args()
+    chunk_size=59*args.chunk # 59 images per exposure
+
+    create_table(ImageTable)
+    load_image_table(args.expnum,chunk_size=chunk_size,force=args.force)
+    finalize_table(ImageTable)
+
+    sys.exit(0)

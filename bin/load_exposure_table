@@ -6,20 +6,15 @@ import os,sys
 import logging
 import argparse
 
-from archive.parser import VerboseAction, Parser
-from archive.dexp import load_exposure_table
-
-def parser():
-    parser = Parser(description=__doc__)
-    parser.add_argument('expnum',const=None,nargs='*',type=int,
-        help='Explicit exposures to load')
-    parser.add_argument('-f','--force',action='store_true',
-        help='Overwrite existing database entries')
-    parser.add_argument('-k','--chunk',type=int,default=300,
-        help='Chunksize for upload')
-    return parser
+from archive.parser import LoaderParser
+from archive.dexp import create_table, finalize_table
+from archive.dexp import load_exposure_table, ExposureTable
 
 if __name__ == "__main__":
-    args = parser().parse_args()
+    args = LoaderParser().parse_args()
+
+    create_table(ExposureTable)
     load_exposure_table(args.expnum,chunk_size=args.chunk,force=args.force)
+    finalize_table(ExposureTable)
+
     sys.exit(0)
