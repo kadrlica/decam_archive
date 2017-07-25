@@ -102,7 +102,12 @@ def link_exposure(expnum,outfile=None):
 
 def read_header(kwargs):
     """Wrapper around fitsio.read_header to work with Pool.map"""
-    return fitsio.read_header(**kwargs)
+    # Only compatible with python 2
+    # https://stackoverflow.com/a/6062799/4075339
+    try:
+        return fitsio.read_header(**kwargs)
+    except Exception as e:
+        raise type(e)(e.message + kwargs.get('filename',''))
 
 def read_exposure_headers(expnums, multiproc=False):
     if np.isscalar(expnums):

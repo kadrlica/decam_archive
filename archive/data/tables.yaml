@@ -704,4 +704,4 @@ image:
     NAME_RADECMINMAX:
       query: CREATE INDEX {table}_{name}_idx ON {table} (FILENAME,RACMIN,RACMAX,DECCMIN,DECCMAX);
     NAME_EXP_CCD:
-      query: CREATE INDEX {table}_{name}_idx ON {table} (FILENAME,EXPNUM,CCD);
+      query: CREATE INDEX {table}_{name}_idx ON {table} (FILENAME,EXPNUM,CCDNUM);
