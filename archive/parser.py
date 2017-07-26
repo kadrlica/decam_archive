@@ -54,13 +54,13 @@ class DatetimeAction(argparse.Action):
 class Parser(argparse.ArgumentParser):
     def __init__(self,*args,**kwargs):
         super(Parser,self).__init__(*args,**kwargs)
-        self.add_argument('--dryrun',action='store_true',
-                          help='dry run (do nothing)')
         self.add_argument('-v','--verbose',action=VerboseAction,
                           help='output verbosity')
         self.add_argument('--version', action='version',
                           version='maglites v'+__version__,
                           help="print version number and exit")
+        self.add_argument('--dryrun',action='store_true',
+                          help='dry run (do nothing)')
 
 
 class LoaderParser(Parser):
