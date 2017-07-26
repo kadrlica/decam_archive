@@ -24,10 +24,12 @@ class SpecialFormatter(logging.Formatter):
         return logging.Formatter.format(self, record)
 
 def setup_logging(level=logging.INFO):
+    # Can we update the handler rather than adding one?
     logger = logging.getLogger()
     handler = logging.StreamHandler()
     handler.setFormatter(SpecialFormatter())
-    logger.addHandler(handler)
+    if not len(logger.handlers):
+        logger.addHandler(handler)
     logger.setLevel(level)
 
 setup_logging()

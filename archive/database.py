@@ -219,7 +219,10 @@ class Database(object):
         indexes = self.create_index_query(**kwargs)
         for index in indexes:
             logging.debug(index)
-            self.execute(index)
+            try:
+                self.execute(index)
+            except psycopg2.ProgrammingError as e:
+                logging.warn(str(e))
 
     def drop_index_query(self,**kwargs):
         table = kwargs.get('table')

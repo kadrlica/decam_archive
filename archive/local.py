@@ -31,9 +31,11 @@ BLISS_PATHS = [
     '/data/des50.b/data/BLISS',
     ]
 
-FILE_INFO_DTYPE = [('expnum',int),('ccdnum',int),('band','S1'),
+FILE_INFO = odict([('expnum',int),('ccdnum',int),('band','S1'),
                    ('reqnum',int),('attnum',int),('compression','S5'),
-                   ('filename',object),('path',object),('filetype',object)]
+                   ('filename',object),('path',object),('filetype',object)
+                   ])
+FILE_INFO_DTYPE = FILE_INFO.items()                  
 
 FILE_TYPES = odict([
         ('immask', dict(suffix='immask.fits.fz')),
@@ -124,10 +126,11 @@ def read_exposure_headers(expnums, multiproc=False):
         headers = map(read_header,kwargs)
 
     # Add the filename
-    filenames = np.char.rpartition(filepaths,'/')[:,-1]
+    #filenames = np.char.rpartition(filepaths,'/')[:,-1]
+    inv = parse_reduced_filepath(filepaths)
     for i,h in enumerate(headers):
         h['FILEPATH'] = filepaths[i]
-        h['FILENAME'] = filenames[i]
+        h['FILENAME'] = inv['filename'][i]
 
     return headers
 
@@ -137,7 +140,7 @@ def read_image_headers(filepaths, multiproc=False):
     # 
     #filepaths=get_image_files(expnum=expnums)
 
-    filepaths = np.atleast_1d(filepaths)
+    filepaths = np.atleast_1d(filepaths).astype(str, copy=False)
     kwargs = [dict(filename=f,ext='SCI') for f in filepaths]
     if multiproc:
         p = Pool(processes=cpu_count()-2, maxtasksperchild=10)
@@ -148,10 +151,11 @@ def read_image_headers(filepaths, multiproc=False):
         headers = map(read_header,kwargs)
 
     # Add the filename
-    filenames = np.char.rpartition(filepaths,'/')[:,-1]
+    #filenames = np.char.rpartition(filepaths,'/')[:,-1]
+    inv = parse_reduced_filepath(filepaths)
     for i,h in enumerate(headers):
         h['FILEPATH'] = filepaths[i]
-        h['FILENAME'] = filenames[i]
+        h['FILENAME'] = inv['filename'][i]
 
     return headers
 
@@ -261,61 +265,104 @@ def fill_file_info(array, **kwargs):
     for key,val in kwargs.items():
         array[key] = val
 
-def parse_standard_file(filename,out=None):
-    filename = np.atleast_1d(filename)
-    path,sep,basename = np.char.rpartition(filename,'/').T
+    # Should/can we cast the object fields to strings?
+
+
+def parse_reduced_filepath(filepath):
+    """Parse a reducted filepath into path,filename,compression.
+    
+    Parameters:
+    -----------
+    filepath : full path to file
+
+    Returns:
+    --------
+    out : array with 'path','filename','compression'
+    """
+    keys = ['path','filename','compression']
+    dtype = [(k,v) for k,v in FILE_INFO.items() if k in keys]
+    out = np.recarray(len(filepath),dtype=dtype)
+
+    filepath = np.atleast_1d(filepath).astype('str',copy=False)
+    path,sep,basename = np.char.rpartition(filepath,'/').T
     compress = np.where(np.char.endswith(basename,'.fz'),'.fz','')
-    fname = np.char.rstrip(basename,'.fz')
-    stripped = np.char.lstrip(fname,'D')
+    filename = np.char.partition(basename,'.fz')[:,0]
+    fill_file_info(out,path=path,filename=filename,compression=compress)
+    return out
+
+def parse_standard_file(filepath,out=None):
+    """Parse the standard reduced filenames of the type:
+      'D%(expnum)08d_%(band)s_%(ccdnum)02d_r%(reqnum)ip%(attnum)_*.fits.fz'
+    """
+    #filename = np.atleast_1d(filename)
+    #path,sep,basename = np.char.rpartition(filename,'/').T
+    #compress = np.where(np.char.endswith(basename,'.fz'),'.fz','')
+    #fname = np.char.rstrip(basename,'.fz')
+    
+    fname = parse_reduced_filepath(filepath)
+    stripped = np.char.lstrip(fname['filename'].astype(str,copy=False),'D')
     expnum,band,ccdnum,reqatt,ftype=np.vstack(np.char.split(stripped,'_',4)).T
     ftype = np.char.partition(ftype,'.')[:,0]
     reqnum,attnum=np.char.partition(np.char.lstrip(reqatt,'r'),'p')[:,[0,2]].T
 
     if out is None:
-        out = np.recarray(len(filename),dtype=FILE_INFO_DTYPE)
+        out = np.recarray(len(filepath),dtype=FILE_INFO_DTYPE)
 
     fill_file_info(out, expnum=expnum, ccdnum=ccdnum, band=band, reqnum=reqnum,
-                   attnum=attnum, filename=fname, path=path, filetype=ftype,
-                   compression=compress)
+                   attnum=attnum, filename=fname['filename'], 
+                   path=fname['path'], filetype=ftype,
+                   compression=fname['compression'])
 
     return out
 
-def parse_zeropoint_file(filename,out=None):
-    filename = np.atleast_1d(filename)
-    path,sep,basename = np.char.rpartition(filename,'/').T
-    compress = ''
-    fname = basename
-    stripped = np.char.rstrip(np.char.lstrip(fname,'Merg_allZP_D'),'.csv')
+def parse_zeropoint_file(filepath,out=None):
+    """Parse the zeropoint reduced filenames of the type:
+      'Merg_allZP_D%(expnum)08d_r%(reqnum)ip%(attnum).csv'
+    """
+    #filename = np.atleast_1d(filename)
+    #path,sep,basename = np.char.rpartition(filename,'/').T
+    #compress = ''
+    #fname = basename
+
+    fname = parse_reduced_filepath(filepath)
+    stripped = np.char.rstrip(np.char.lstrip(fname['filename'].astype(str,copy=False),'Merg_allZP_D'),'.csv')
     expnum,reqatt=np.vstack(np.char.split(stripped,'_',1)).T
     ccdnum,band = -1,''
     ftype = 'allzp'
     reqnum,attnum=np.char.partition(np.char.lstrip(reqatt,'r'),'p')[:,[0,2]].T
 
     if out is None:
-        out = np.recarray(len(filename),dtype=FILE_INFO_DTYPE)
+        out = np.recarray(len(filepath),dtype=FILE_INFO_DTYPE)
 
     fill_file_info(out, expnum=expnum, ccdnum=ccdnum, band=band, reqnum=reqnum,
-                   attnum=attnum, filename=fname, path=path, filetype=ftype,
-                   compression=compress)
+                   attnum=attnum, filename=fname['filename'], 
+                   path=fname['path'], filetype=ftype,
+                   compression=fname['compression'])
 
     return out
 
-def parse_psfex_file(filename,out=None):
-    filename = np.atleast_1d(filename)
-    path,sep,basename = np.char.rpartition(filename,'/').T
-    compress = ''
-    fname = basename
-    stripped = np.char.lstrip(fname,'D')
+def parse_psfex_file(filepath,out=None):
+    """Parse the psfex reduced filenames of the type:
+      'D%(expnum)08d_%(band)s_%(ccdnum)02d_r%(reqnum)ip%(attnum)_sextractorPSFEX.psf'
+    """
+    #filename = np.atleast_1d(filename)
+    #path,sep,basename = np.char.rpartition(filename,'/').T
+    #compress = ''
+    #fname = basename
+
+    fname = parse_reduced_filepath(filepath)
+    stripped = np.char.lstrip(fname['filename'].astype(str,copy=False),'D')
     expnum,band,ccdnum,reqatt,ftype=np.vstack(np.char.split(stripped,'_',4)).T
     ftype = 'psfex'
     reqnum,attnum=np.char.partition(np.char.lstrip(reqatt,'r'),'p')[:,[0,2]].T
 
     if out is None:
-        out = np.recarray(len(filename),dtype=FILE_INFO_DTYPE)
+        out = np.recarray(len(filepath),dtype=FILE_INFO_DTYPE)
 
     fill_file_info(out, expnum=expnum, ccdnum=ccdnum, band=band, reqnum=reqnum,
-                   attnum=attnum, filename=fname, path=path, filetype=ftype,
-                   compression=compress)
+                   attnum=attnum, filename=fname['filename'], 
+                   path=fname['path'], filetype=ftype,
+                   compression=fname['compression'])
 
     return out
 
@@ -325,9 +372,8 @@ def parse_reduced_file(filename,out=None):
     
     Parameters:
     -----------
-    filename: String or array of strings that general follow the form:
-      'D%(expnum)08d_%(band)s_%(ccdnum)02d_r%(reqnum)ip%(attnum)_*.fits.fz'
-    
+    filename: String or array of strings that describe the filepath
+
     Returns:
     --------
     ret :  Record array of file info
@@ -335,9 +381,10 @@ def parse_reduced_file(filename,out=None):
     scalar = np.isscalar(filename)
     filename = np.atleast_1d(filename)
 
-    if not filename.dtype.char == 'S':
-        dtype = 'S%i'%(len(max(filename, key=len)))
-        filename = filename.astype(dtype)
+    filename = filename.astype(str,copy=False)
+    #if not filename.dtype.char == 'S':
+    #    dtype = 'S%i'%(len(max(filename, key=len)))
+    #    filename = filename.astype(dtype)
 
     bad = ~(np.char.endswith(filename,'.fz')|
             np.char.endswith(filename,'.fits')|

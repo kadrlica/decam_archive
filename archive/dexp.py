@@ -38,11 +38,11 @@ def cel2gal(ra,dec):
     gal = SkyCoord(ra,dec,unit=u.deg,frame='icrs').galactic
     return gal.l.value, gal.b.value
 
-class DEXP(Database):
-    """ SISPI database access. """
+class BLISS(Database):
+    """ Postgres database access. """
 
     def __init__(self):
-        super(DEXP,self).__init__(dbname='db-bliss')
+        super(BLISS,self).__init__(dbname='db-bliss')
         self.connect()
 
     def get_date(self,expnum):
@@ -108,24 +108,24 @@ class DEXP(Database):
     def expnum2nite(self, expnum):
         return self.get_nite(expnum)
 
-    def load_exposure(self, expnum):
-        pass
+    #def load_exposure(self, expnum):
+    #    pass
+    # 
+    #def load_exposures(self, expnums):
+    #    pass
 
-    def load_exposures(self, expnums):
-        pass
-
-class BLISS(DEXP): pass
+class DEXP(BLISS): pass
 
 
 class Table(object):
-    """Base class for postgres table objects."""
+    """Baseclass for wrapping postgres tables."""
     _filename  = os.path.join(get_datadir(),'tables.yaml')
     _section   = None
     
     def __init__(self,config=None,section=None):
         if config is None: config = self._filename
         if section is None: section = self._section
-        self.db = DEXP()
+        self.db = BLISS()
         self.load_config(config,section)
 
     @classmethod
@@ -133,6 +133,7 @@ class Table(object):
         if config is None:
             config = yaml.load(open(cls._filename,'r'))
         return config[cls._section]['table']
+
 
     def load_config(self,config, section=None):
         if config is None: return config
@@ -224,6 +225,48 @@ class Table(object):
     def get_expnum(self):
         query = "select expnum from %s;"%self.tablename
         return self.db.query2rec(query)['expnum']
+
+    def check_loaded_filename(self, filename):
+        """Check for existing filenames.
+
+        This creates a temporary table, uploads the request files, and
+        joins on the archive table to identify overlap.
+
+        Parameters:
+        -----------
+        filename : structured array of filenames to check.
+
+        Returns:
+        --------
+        out : list of duplicate filenames
+        """
+        # Create a temporary table
+        tmpname = os.path.basename(tempfile.NamedTemporaryFile().name)
+        tmp = dict(table='check_filename_%s'%tmpname,
+                    columns={'filename':dict(type='TEXT',index='PK')},
+                    )
+        self.db.drop_table(tmp['table'])
+        self.db.create_table(**tmp)
+        self.db.load_data(tmp['table'],{'filename':filename})
+        query = """select t.filename from %s f, %s t
+        where f.filename = t.filename"""%(self.tablename,tmp['table'])
+        out = self.db.query2rec(query)['filename']
+        self.db.drop_table(tmp['table'])
+        return out
+
+    def delete_by_filename(self,filename):
+        filename = np.atleast_1d(filename)
+        filestr = ','.join(f for f in filename)
+        query='delete from %s where filename in (%s);'%(self.tablename,filestr)
+        logging.debug(query)
+        self.db.execute(query)
+
+    def delete_by_expnum(self,expnum):
+        expnum = np.atleast_1d(expnum)
+        expstr = ','.join('%s'%e for e in expnum)
+        query = 'delete from %s where expnum in (%s);'%(self.tablename,expstr)
+        logging.debug(query)
+        self.db.execute(query)
     
 FILTER_DICT = odict([
         ("u DECam c0006 3500.0 1000.0",'u'),
@@ -247,34 +290,6 @@ class ExposureTable(Table):
     def __init__(self):
         super(ExposureTable,self).__init__(self._filename,self._section)
     
-    #def check_config(self):
-    #    """Check that the configuration is valid."""
-    #    pass
-
-    #def load_exposures(self, expnums, chunk_size=1000):
-    #    """Load a list of exposure numbers.
-    #    
-    #    Parameters:
-    #    -----------
-    #    expnums    : List of exposure numbers.
-    #    chunk_size : Number of exposures to process and upload at a time.
-    # 
-    #    Returns:
-    #    --------
-    #    None
-    #    """
-    #    if np.isscalar(expnums): expnums = [expnums]
-    #    nchunks = len(expnums)//chunk_size + 1
-    #    opts = np.get_printoptions()
-    #    np.set_printoptions(threshold=3,edgeitems=1)
-    #    for i,chunk in enumerate(np.array_split(expnums,nchunks)):
-    #        first = os.path.basename(chunk[0])
-    #        last = os.path.basename(chunk[-1])
-    #        msg = "(%i/%i) Loading chunk [%s - %s]..."%(i+1,nchunks,first,last)
-    #        logging.info(msg)
-    #        self.load_exposure_chunk(chunk)
-    #    np.set_printoptions(**opts)
-
     def load_table(self, data):
         """Load a chunk of exposures.
         
@@ -288,7 +303,7 @@ class ExposureTable(Table):
         """
         expnum = np.atleast_1d(data)
         df = pd.DataFrame(self.read_headers(expnum))
-        self.load_table(df)
+        super(ExposureTable,self).load_table(df)
 
     def read_headers(self, expnums, keys=None, multiproc=True):
         """Read the exposure information out of the file headers.
@@ -360,23 +375,6 @@ class ExposureTable(Table):
          
         return hdr
 
-    #def get_expnum(self):
-    #    query = 'select expnum from %s;'%self.tablename
-    #    return self.db.query2recarray(query)['expnum']
-    #    #try:
-    #    #    expnum = self.db.query2recarray(query)['expnum']
-    #    #except ValueError:
-    #    #    #expnum = np.rec.recarray(0,dtype=[('expnum',int)])
-    #    #    expnum = np.array([],dtype=int)
-    #    #
-    #    #return expnum
-
-    def delete_expnum(self,expnum):
-        expnum = np.atleast_1d(expnum)
-        expstr = ','.join('%s'%e for e in expnum)
-        query = 'delete from %s where expnum in (%s);'%(self.tablename,expstr)
-        logging.debug(query)
-        self.db.execute(query)
 
 class ImageTable(Table):
     """Object for managing the 'image' table."""
@@ -386,34 +384,6 @@ class ImageTable(Table):
     def __init__(self):
         super(ImageTable,self).__init__(self._filename,self._section)
     
-    #def check_config(self):
-    #    """Check that the configuration is valid."""
-    #    pass
-    
-    #def load_images(self, filepaths, chunk_size=1000):
-    #    """Load a list of images.
-    #    
-    #    Parameters:
-    #    -----------
-    #    expnums    : List of exposure numbers.
-    #    chunk_size : Number of exposures to process and upload at a time.
-    # 
-    #    Returns:
-    #    --------
-    #    None
-    #    """
-    #    if np.isscalar(filepaths): filepaths = [filepaths]
-    #    nchunks = len(filepaths)//chunk_size + 1
-    #    opts = np.get_printoptions()
-    #    np.set_printoptions(threshold=3,edgeitems=1)
-    #    for i,chunk in enumerate(np.array_split(filepaths,nchunks)):
-    #        first = os.path.basename(chunk[0])
-    #        last = os.path.basename(chunk[-1])
-    #        msg = "(%i/%i) Loading chunk [%s - %s]..."%(i+1,nchunks,first,last)
-    #        logging.info(msg)
-    #        self.load_image_chunk(chunk)
-    #    np.set_printoptions(**opts)
-
     def load_table(self, data):
         """Load a chunk of images
         
@@ -485,42 +455,16 @@ class ImageTable(Table):
         logging.debug(query)
         self.db.execute(query)
 
-class CatalogTable(Table):
-    """Object for managing the objects table."""
-    _filename  = os.path.join(get_datadir(),'tables.yaml')
-    _section   = 'catalog'
-
-    def __init__(self):
-        super(CatalogTable,self).__init__(self._filename,self._section)
+    def get_missing_filepaths(self):
+        query = """select f.expnum, f.path||'/'||f.filename||f.compression as filepath
+        from %s f left join %s t on f.filename = t.filename 
+        where f.filetype = 'immask' and t.filename is Null;
+        """%(ArchiveTable().tablename,self.tablename)
+        return self.db.query2rec(query)
     
 class ArchiveTable(Table):
     _filename  = os.path.join(get_datadir(),'tables.yaml')
     _section   = 'archive'
-
-    #def load_archive_info(self, filenames, chunk_size=1e5):
-    #    """Load file archive info.
-    #    
-    #    Parameters:
-    #    -----------
-    #    filenames : SE files to archive.
-    #    chunk_size : Number of files to process and upload at once.
-    #    
-    #    Returns:
-    #    --------
-    #    None
-    #    """
-    #    filenames = np.atleast_1d(filenames)
-    #    nchunks = len(filenames)//chunk_size + 1
-    #    opts = np.get_printoptions()
-    #    np.set_printoptions(threshold=3,edgeitems=1)
-    #    for i,chunk in enumerate(np.array_split(filenames,nchunks)):
-    #        first = os.path.basename(chunk[0])
-    #        last = os.path.basename(chunk[-1])
-    #        msg = "(%i/%i) Loading chunk [%s - %s]..."%(i+1,nchunks,first,last)
-    #        logging.debug(msg)
-    #        data = self.create_archive(chunk)
-    #        self.load_table(data,option='FORCE NOT NULL compression')
-    #    np.set_printoptions(**opts)
 
     def load_table(self, data):
         """Load a chunk of images
@@ -533,8 +477,10 @@ class ArchiveTable(Table):
         --------
         None
         """
+        #filepaths = np.atleast_1d(data)
+        #data = self.create_archive(filepaths)
         filepaths = np.atleast_1d(data)
-        data = self.create_archive(filepaths)
+        data = self.parse_filepath(filepaths)
         option='FORCE NOT NULL compression'
         super(ArchiveTable,self).load_table(data,option=option)
 
@@ -543,14 +489,14 @@ class ArchiveTable(Table):
         query = "create view %s as (select *,path||'/'||filename||compression as filepath from %s);"%(self.tablename,'_'+self.tablename)
         self.db.execute(query)
 
-    def create_archive(self, filenames):
+    def parse_filepath(self, filenames):
         dtype = self.get_dtypes()
         arc = np.recarray(len(filenames),dtype=dtype)
         parsed = archive.local.parse_reduced_file(filenames)
-
+     
         for n in parsed.dtype.names:
             arc[n.lower()] = parsed[n.lower()]
-
+     
         arc['status'] = 'processed'
         return arc
 
@@ -579,6 +525,271 @@ class ArchiveTable(Table):
         query = "update %s set status = '%s' where filename in (%s);"%(self.tablename,status,values)
         logging.debug(query)
         self.db.execute(query)
+
+    def get_reduced_files(self,expnums=None, filetype=None):
+        # Create a temporary table
+        expnum = np.atleast_1d(expnums)
+        query = """select f.expnum,f.filename,
+        f.path||'/'||f.filename||f.compression as filepath"""
+        if not (len(expnum)==0 or expnum[0]==None):
+            tmpname = os.path.basename(tempfile.NamedTemporaryFile().name)
+            tmp = dict(table='get_filename_%s'%tmpname,
+                        columns={'expnum':dict(type='INTEGER',index='PK')},
+                       )
+            self.db.drop_table(tmp['table'])
+            self.db.create_table(**tmp)
+            self.db.load_data(tmp['table'],{'expnum':expnum})
+            query += """ from %s f, %s t
+            where f.expnum = t.expnum"""%(self.tablename,tmp['table'])
+            if filetype:
+                query += " and f.filetype = '%s'"%(filetype)
+            query += ';'
+            out = self.db.query2rec(query)
+            self.db.drop_table(tmp['table'])
+        else:
+            query += " from %s f"%(self.tablename)
+            if filetype:
+                query += " where f.filetype = '%s'"%(filetype)
+            query += ';'
+            out = self.db.query2rec(query)
+
+        return out
+    
+
+    def get_catalog_files(self,**kwargs):
+        kwargs.update(filetype='fullcat')
+        return self.get_reduced_files(**kwargs)
+     
+    def get_image_files(self,**kwargs):
+        kwargs.update(filetype='immask')
+        return self.get_reduced_files(**kwargs)
+     
+    def get_psfex_files(self,**kwargs):
+        kwargs.update(filetype='psfex')
+        return self.get_reduced_files(**kwargs)
+     
+    def get_zeropoint_files(self,**kwargs):
+        kwargs.update(filetype='allzp')
+        return self.get_reduced_files(**kwargs)
+
+    def get_missing_expnum(self):
+        query = """select j.jobid::INT as expnum
+        from %s j left join %s t on j.jobid::INT = t.expnum
+        where j.status = 'done' and t.expnum is Null;
+        """%(JobsTable().tablename,self.tablename)
+        return self.db.query2rec(query)
+
+
+class JobsTable(Table):
+    """Object for managing the jobs table."""
+    _filename  = None
+    _section   = None
+    
+    def __init__(self):
+        super(JobsTable,self).__init__(self._filename,self._section)
+        self.tablename = 'jobs'
+
+    def get_expnum(self):
+        query = "select jobid::INT as expnum from %s;"%(self.tablename)
+        return self.db.query2rec(query)['expnum']
+
+    def get_expnum_done(self):
+        query = "select jobid::INT as expnum from %s where status='done';"%(self.tablename)
+        return self.db.query2rec(query)['expnum']
+        
+
+class ZeropointTable(Table):
+    """Object for managing the zeropoint table."""
+    _filename  = os.path.join(get_datadir(),'tables.yaml')
+    _section   = 'zeropoint'
+    
+    ## From docdb:9750 (unnecessary)
+    #KTERMS = odict([
+    #        ('u',0.436),
+    #        ('g',0.192),
+    #        ('r',0.097),
+    #        ('i',0.071),
+    #        ('z',0.083),
+    #        ('Y',0.067),
+    #        ])
+            
+    def load_table(self,data):
+        """Load a chunk of zeropoint files
+        
+        Parameters:
+        -----------
+        data : The list of filepaths to load.
+        
+        Returns:
+        --------
+        None
+        """
+        filepaths = np.atleast_1d(data)
+        data = self.create_zeropoints(filepaths)
+        super(ZeropointTable,self).load_table(data)
+
+    def create_zeropoints(self, filepaths):
+        """ Create the zeropoint array for upload.
+
+        Parameters:
+        -----------
+        filepaths: Merged zeropoint files to parse.
+
+        Returns:
+        --------
+        zeropoints: Numpy array of zeropoints
+        """
+        data,filename = [],[]
+        for f in filepaths:
+            try:
+                d = pd.read_csv(f).to_records(index=False)
+            except ValueError as e:
+                # File doesn't exist?
+                msg = str(e) + '\n Skipping %s...'%f
+                logging.warn(msg)
+                continue
+            data += [d]
+            filename += len(d)*[os.path.basename(f)]
+            
+        filename = np.array(filename)
+        data = np.hstack(data)
+        if len(filename) != len(data):
+            msg = "Length mismatch in data and filename"
+            raise ValueError(msg)
+
+        dtype = self.get_dtypes()
+        zp = np.recarray(len(data),dtype=dtype)
+        
+        parsed = archive.local.parse_reduced_file(data['FILENAME'])
+
+        # Some sanity checks
+        if np.any(parsed['ccdnum'] != data['CCDNUM']):
+            msg = "CCDNUMs do not match."
+            raise ValueError(msg)
+        if np.any(parsed['expnum'] != data['EXPNUM']):
+            msg = "EXPNUMs do not match."
+            raise ValueError(msg)
+        
+        zp['filename'] = filename
+        zp['catalogname'] = data['FILENAME']
+        zp['expnum'] = data['EXPNUM']
+        zp['ccdnum'] = data['CCDNUM']
+        zp['mag_zero'] = data['NewZP']
+        zp['sigma_mag_zero'] = data['NewZPrms']
+        zp['flag'] = data['NewZPFlag']
+        zp['band'] = parsed['band']
+        zp['source'] = 'expCalib'
+
+        ## Calculate the effective zeropoint
+        #effzp = self.effective_zeropoints(zp)
+        #bad = np.isnan(effzp)
+        #effzp[bad] = -999
+        #zp['eff_mag_zero'] = effzp
+        #zp['flag'][bad] -= int(1e5)
+
+        return zp
+
+    def effective_zeropoints(self,data):
+        """ 
+        DEPRECATED: ADW 2017-07-23
+        The zeropoints from expCalib are not corrected for exposure
+        time or airmass.
+
+        Parameters:
+        -----------
+        data : recarray containing 'expnum' and 'mag_zero' columns.
+        
+        Returns:
+        --------
+        effzp : the effective zeropoint
+        """
+        d = pd.DataFrame(data[['expnum','mag_zero']])
+        exp = self.db.query2rec('select expnum, exptime, band, zd, 1/COS(RADIANS(zd)) as airmass from exposure e;')
+        exp = pd.DataFrame(exp)
+        merge = d.merge(exp,on='expnum')
+        kterms = np.array(map(self.KTERMS.get,merge['band']))
+        effzp = (merge['mag_zero'] + 2.5*np.log10(merge['exptime'])-merge['airmass']*kterms)
+        return effzp.values
+                         
+    def read_zeropoints(self, filepath):
+        pd.read_csv(filepath)
+
+    def delete_zeropoint(self,filename):
+        filename = np.atleast_1d(filename)
+        # Shouldn't be necessary or allowed
+        filename = map(os.path.basename,filename) 
+        filestr = ','.join("'%s'"%f for f in filename)
+        query = "delete from %s where filename in (%s);"%(self.tablename,filestr)
+        logging.debug(query)
+        self.db.execute(query)
+
+    def get_missing_filepaths(self):
+        query = """select f.expnum, f.path||'/'||f.filename||f.compression as filepath
+        from %s f left join %s t on f.filename = t.filename 
+        where f.filetype = 'allzp' and t.filename is Null;
+        """%(ArchiveTable().tablename,self.tablename)
+        return self.db.query2rec(query)
+        
+class ProctagTable(Table):
+    """Object for managing the proctag table."""
+    _filename  = os.path.join(get_datadir(),'tables.yaml')
+    _section   = 'proctag'
+    _tags      = os.path.join(get_datadir(),'proctag.yaml')
+
+    def __init__(self):
+        super(ProctagTable,self).__init__(self._filename,self._section)
+        self._load_tags()
+
+    def _load_tags(self):
+        self.tags = yaml.load(open(self._tags))
+
+    def load_proctag(self, tag, query=None, expnum=None):
+        """ Create the proctag and load to db. Use tag lookup query.
+
+        Parameters:
+        -----------
+        tag:    tag to create
+        query:  explicit query to select expnums
+        expnum: explicit list of expnums
+
+        Returns:
+        --------
+        proctag: array of proctag values
+        """
+        proctag = self.create_proctag(tag,query,expnum)
+        self.db.load_data(self.tablename,proctag)
+        return proctag
+
+    def create_proctag(self, tag, query=None, expnum=None):
+        """ Create the proctag data array.
+        
+        Parameters:
+        -----------
+        tag:     tag to create
+        query:   explicit query to select expnums
+        expnum:  explicit list of expnums
+
+        Returns:
+        --------
+        proctag: array of proctag values
+        """
+        if expnum is not None and query is not None:
+            msg = "Cannot specify 'query' and 'expnum'."
+            raise Exception(msg)
+
+        if expnum is None:
+            if query is None: query = self.tags[tag]['query']
+            expnum = self.db.query2rec(query)['expnum']
+        else:
+            expnum = np.atleast_1d(expnum)
+        
+        data = np.recarray(len(expnum),dtype=self.get_dtypes())
+        data['expnum'] = expnum
+        data['tag'] = tag
+        data['created_date'] = datetime.datetime.now()
+        data['created_by'] = getpass.getuser()
+        return data
+
 
 class ObjectsTable(Table):
     """Object for managing the objects table."""
@@ -751,224 +962,17 @@ class ObjectsTable(Table):
         s = '\n'.join(data)
         return Header.fromstring(s,sep='\n')
 
-class JobsTable(Table):
-    """Object for managing the jobs table."""
-    _filename  = None
-    _section   = None
-    
-    def __init__(self):
-        super(JobsTable,self).__init__(self._filename,self._section)
-        self.tablename = 'jobs'
-
-    def get_expnum(self):
-        query = "select jobid::INT as expnum from %s;"%(self.tablename)
-        return self.db.query2rec(query)['expnum']
-
-    def get_expnum_done(self):
-        query = "select jobid::INT as expnum from %s where status='done';"%(self.tablename)
-        return self.db.query2rec(query)['expnum']
-        
-
-class ZeropointTable(Table):
-    """Object for managing the zeropoint table."""
+class CatalogTable(Table):
+    """Object for managing the objects table."""
     _filename  = os.path.join(get_datadir(),'tables.yaml')
-    _section   = 'zeropoint'
-    
-    ## From docdb:9750
-    #KTERMS = odict([
-    #        ('u',0.436),
-    #        ('g',0.192),
-    #        ('r',0.097),
-    #        ('i',0.071),
-    #        ('z',0.083),
-    #        ('Y',0.067),
-    #        ])
-            
-    #def load_zeropoints(self, filepaths, chunk_size=1000):
-    #    """Load a list of catalogs.
-    #    
-    #    Parameters:
-    #    -----------
-    #    filepaths  : List of merged zeropoint files to load
-    #    chunk_size : Number of files to process and upload at once.
-    # 
-    #    Returns:
-    #    --------
-    #    None
-    #    """
-    #    filepaths = np.atleast_1d(filepaths)
-    #    nchunks = len(filepaths)//chunk_size + 1
-    #    opts = np.get_printoptions()
-    #    np.set_printoptions(threshold=3,edgeitems=1)
-    #    for i,chunk in enumerate(np.array_split(filepaths,nchunks)):
-    #        first = os.path.basename(chunk[0])
-    #        last = os.path.basename(chunk[-1])
-    #        msg = "(%i/%i) Loading chunk [%s - %s]..."%(i+1,nchunks,first,last)
-    #        logging.info(msg)
-    #        data = self.create_zeropoints(chunk)
-    #        self.load_table(data)
-    #    np.set_printoptions(**opts)
-
-    def load_table(data):
-        """Load a chunk of zeropoint files
-        
-        Parameters:
-        -----------
-        data : The list of filepaths to load.
-        
-        Returns:
-        --------
-        None
-        """
-        filepaths = np.atleast_1d(data)
-        data = self.create_zeropoints(filepaths)
-        super(ZeropointTable,self).load_table(data)
-
-    def create_zeropoints(self, filepaths):
-        """ Create the zeropoint array for upload.
-
-        Parameters:
-        -----------
-        filepaths: Merged zeropoint files to parse.
-
-        Returns:
-        --------
-        zeropoints: Numpy array of zeropoints
-        """
-        data,filename = [],[]
-        for f in filepaths:
-            try:
-                d = pd.read_csv(f).to_records(index=False)
-            except ValueError as e:
-                # File doesn't exist?
-                msg = str(e) + '\n Skipping %s...'%f
-                logging.warn(msg)
-                continue
-            data += [d]
-            filename += len(d)*[os.path.basename(f)]
-            
-        filename = np.array(filename)
-        data = np.hstack(data)
-        if len(filename) != len(data):
-            msg = "Length mismatch in data and filename"
-            raise ValueError(msg)
-
-        dtype = self.get_dtypes()
-        zp = np.recarray(len(data),dtype=dtype)
-        
-        parsed = archive.local.parse_reduced_file(data['FILENAME'])
-
-        # Some sanity checks
-        if np.any(parsed['ccdnum'] != data['CCDNUM']):
-            msg = "CCDNUMs do not match."
-            raise ValueError(msg)
-        if np.any(parsed['expnum'] != data['EXPNUM']):
-            msg = "EXPNUMs do not match."
-            raise ValueError(msg)
-        
-        zp['filename'] = filename
-        zp['catalogname'] = data['FILENAME']
-        zp['expnum'] = data['EXPNUM']
-        zp['ccdnum'] = data['CCDNUM']
-        zp['mag_zero'] = data['NewZP']
-        zp['sigma_mag_zero'] = data['NewZPrms']
-        zp['flag'] = data['NewZPFlag']
-        zp['band'] = parsed['band']
-        zp['source'] = 'expCalib'
-
-        ## Calculate the effective zeropoint
-        #effzp = self.effective_zeropoints(zp)
-        #bad = np.isnan(effzp)
-        #effzp[bad] = -999
-        #zp['eff_mag_zero'] = effzp
-        #zp['flag'][bad] -= int(1e5)
-
-        return zp
-
-    def effective_zeropoints(self,data):
-        """ 
-        DEPRECATED: ADW 2017-07-23
-        The zeropoints from expCalib are not corrected for exposure
-        time or airmass.
-
-        Parameters:
-        -----------
-        data : recarray containing 'expnum' and 'mag_zero' columns.
-        
-        Returns:
-        --------
-        effzp : the effective zeropoint
-        """
-        d = pd.DataFrame(data[['expnum','mag_zero']])
-        exp = self.db.query2rec('select expnum, exptime, band, zd, 1/COS(RADIANS(zd)) as airmass from exposure e;')
-        exp = pd.DataFrame(exp)
-        merge = d.merge(exp,on='expnum')
-        kterms = np.array(map(self.KTERMS.get,merge['band']))
-        effzp = (merge['mag_zero'] + 2.5*np.log10(merge['exptime'])-merge['airmass']*kterms)
-        return effzp.values
-                         
-    def read_zeropoints(self, filepath):
-        pd.read_csv(filepath)
-
-class ProctagTable(Table):
-    """Object for managing the proctag table."""
-    _filename  = os.path.join(get_datadir(),'tables.yaml')
-    _section   = 'proctag'
-    _tags      = os.path.join(get_datadir(),'proctag.yaml')
+    _section   = 'catalog'
 
     def __init__(self):
-        super(ProctagTable,self).__init__(self._filename,self._section)
-        self._load_tags()
+        super(CatalogTable,self).__init__(self._filename,self._section)
 
-    def _load_tags(self):
-        self.tags = yaml.load(open(self._tags))
-
-    def load_proctag(self, tag, query=None, expnum=None):
-        """ Create the proctag and load to db. Use tag lookup query.
-
-        Parameters:
-        -----------
-        tag:    tag to create
-        query:  explicit query to select expnums
-        expnum: explicit list of expnums
-
-        Returns:
-        --------
-        proctag: array of proctag values
-        """
-        proctag = self.create_proctag(tag,query,expnum)
-        self.db.load_data(self.tablename,proctag)
-        return proctag
-
-    def create_proctag(self, tag, query=None, expnum=None):
-        """ Create the proctag data array.
-        
-        Parameters:
-        -----------
-        tag:     tag to create
-        query:   explicit query to select expnums
-        expnum:  explicit list of expnums
-
-        Returns:
-        --------
-        proctag: array of proctag values
-        """
-        if expnum is not None and query is not None:
-            msg = "Cannot specify 'query' and 'expnum'."
-            raise Exception(msg)
-
-        if expnum is None:
-            if query is None: query = self.tags[tag]['query']
-            expnum = self.db.query2rec(query)['expnum']
-        else:
-            expnum = np.atleast_1d(expnum)
-        
-        data = np.recarray(len(expnum),dtype=self.get_dtypes())
-        data['expnum'] = expnum
-        data['tag'] = tag
-        data['created_date'] = datetime.datetime.now()
-        data['created_by'] = getpass.getuser()
-        return data
+########################
+### Global functions ###
+########################
 
 def expnum2nite(expnum):
     """Standalone call to the nite from DExp
@@ -1022,44 +1026,44 @@ def finalize_table(cls):
     tab.create_indexes()
     tab.grant_table()
 
-#def create_exposure_table(force=False):
-#    """Create the postgres exposure table."""
-#    return create_table(ExposureTable)
-# 
-#def create_objects_table(force=False):
-#    """Create the postgres se_objects table."""
-#    return create_table(ObjectsTable)
-# 
-#def create_archive_table(force=False):
-#    """Create the postgres se_objects table."""
-#    return create_table(ArchiveTable)
-# 
-#def create_zeropoint_table(force=False):
-#    """Create the postgres se_objects table."""
-#    return create_table(ZeropointTable)
-
 def load_exposure_table(expnum=None,chunk_size=100,multiproc=False,force=False):
-    """Standalone function to load the exposure table.
+    """Load the exposure table from the raw file inventory on disk.
+
+    Parameters:
+    -----------
+    expnum     : list of exposures to load
+    chunk_size : size of chunk of exposures to load
+    multiproc  : number of multiprocessing cores to use
+    force      : overwrite of existing file info
+
+    Returns:
+    --------
+    None
     """
+    tab = ExposureTable()
     expnum = np.atleast_1d(expnum)
+
+    if force and len(expnum) and expnum[0] is not None:
+        logging.info("Removing files for %i exposures..."%len(expnum))
+        tab.delete_by_expnum(expnum)
+
+    # No exposures specified, get everything from disk
     if not len(expnum) or expnum[0] is None:
         expnum = np.unique(archive.local.get_inventory()['expnum'])
 
-    tab = ExposureTable()
-
-    if force:
-        sel = np.in1d(expnum,tab.get_expnum())
-        if np.any(sel): tab.delete_expnum(expnum[sel])
-
+    # Exposures that are not loaded
     sel = ~np.in1d(expnum,tab.get_expnum())
-    if not np.any(sel):
-        msg = "No new exposures to upload"
-        raise Exception(msg)
+    expnum = expnum[sel]
 
-    return tab.load_chunks(expnum[sel],chunk_size)
+    if not len(expnum):
+        logging.warn("No new exposures to upload.")
+        return
+
+    logging.debug("Loading %i exposures..."%len(expnum))
+    return tab.load_chunks(expnum,chunk_size)
 
 def load_archive_table(expnum=None,chunk_size=1e3,multiproc=True,force=False):
-    """Load the exposure table from the file inventory on disk.
+    """Load the file archive table from the reduced file inventory on disk.
 
     Parameters:
     -----------
@@ -1073,45 +1077,49 @@ def load_archive_table(expnum=None,chunk_size=1e3,multiproc=True,force=False):
     None
     """
     tab = ArchiveTable()
-
     expnum = np.atleast_1d(expnum)
 
-    # Only get exposures marked as 'done'
-    if len(expnum)==0 or expnum[0]==None:
-        expnum = JobsTable().get_expnum_done()
+    # If 'expnum' and 'force', delete existing exposures
+    if force and len(expnum) and expnum[0] is not None:
+        logging.info("Removing files for %i exposures..."%len(expnum))
+        tab.delete_by_expnum(expnum)
+
+    # Get missing exposure numbers
+    inv = tab.get_missing_expnum()
+    if len(expnum) and expnum[0] is not None:
+        sel = np.in1d(expnum,inv['expnum'])
+        expnum = expnum[sel]
+    else:
+        expnum = inv['expnum']
+
+    if not len(expnum):
+        logging.warn("No new filenames to upload.")
+        return
 
     logging.debug("Loading %i exposures..."%len(expnum))
 
-    # The query for filepaths actually takes a long time, so split up
+    # The query for filepaths takes a long time, so split up
     nchunks = len(expnum)//chunk_size + 1
     for i,chunk in enumerate(np.array_split(expnum,nchunks)):
-        msg = "(%i/%i) Getting reduced files from disk..."%(i+1,nchunks)
+        msg = "(%i/%i) Getting reduced filepaths from disk..."%(i+1,nchunks)
         logging.info(msg)
 
         # Get all the files
         files = archive.local.get_reduced_files(expnum=chunk,suffix='_*.fits*',
                                                 multiproc=multiproc)
-        psffiles = archive.local.get_psfex_files(expnum=chunk,multiproc=multiproc)
-        zpfiles = archive.local.get_zeropoint_files(expnum=chunk,multiproc=multiproc)
-        filepath = np.unique(np.concatenate([files,zpfiles,psffiles]))
+        psffiles = archive.local.get_psfex_files(expnum=chunk,
+                                                 multiproc=multiproc)
+        zpfiles = archive.local.get_zeropoint_files(expnum=chunk,
+                                                    multiproc=multiproc)
 
-        path,sep,filename = np.char.rpartition(filepath,'/').T
-        if force:
-            logging.debug("Removing old filenames...")
-            sel = np.in1d(filename,tab.get_filename())
-            if np.any(sel): tab.delete_filename(filename[sel])
+        filepath = np.unique(np.concatenate([files,zpfiles,psffiles]))
      
-        sel = ~np.in1d(filename,tab.get_filename())
-        if not np.any(sel):
-            logging.warn("No new filenames to upload.")
-            continue
-     
-        logging.debug("Loading archive...")
-        tab.load_table(filepath[sel],1e5)
+        logging.debug("Loading %s files..."%len(filepath))
+        tab.load_chunks(filepath,1e5)
 
     # Update the band information with a query
     logging.debug("Updating zeropoint bands:")
-    query = """update %(archive)s a set band = e.band from %(exposure)s 
+    query = """update %(archive)s a set band = e.band from %(exposure)s e
                where e.expnum = a.expnum and a.band is NULL
             """%dict(archive=tab.tablename,exposure=ExposureTable().tablename)
     logging.debug(query)
@@ -1119,9 +1127,81 @@ def load_archive_table(expnum=None,chunk_size=1e3,multiproc=True,force=False):
 
     return
 
+def load_table(cls, expnum=None, chunk_size=100, multiproc=True,force=False):
+    """Standalone function to load a table from files.
+
+    Parameters:
+    -----------
+    expnum     : explicit expnum(s) to load
+    chunk_size : size of chunk to upload
+    multiproc  : use multiprocessing?
+    force      : delete and reload existing expnum
+
+    Returns:
+    --------
+    None
+    """
+    tab = cls()
+    expnums = np.atleast_1d(expnum)
+
+    # If 'force' and 'expnum' specified, delete files that are already loaded
+    if force and len(expnum) and expnum[0] is not None:
+        logging.info("Removing files for %i exposures..."%len(expnum))
+        tab.delete_by_expnum(expnum)
+
+    # Upload all files that are 'processed'
+    logging.debug("Getting files from database...")
+    inv = tab.get_missing_filepaths()
+    filepath = inv['filepath']
+
+    if len(expnum) and expnum[0] is not None:
+        sel = np.in1d(inv['expnum'],expnum)
+        filepath = filepath[sel]
+
+    if not len(filepath):
+        logging.warn("No new files to load.")
+        return
+
+    logging.debug("Loading %s files..."%len(filepath))
+    return tab.load_chunks(filepath,chunk_size)
+
+def load_zeropoint_table(expnum=None,chunk_size=5e3,multiproc=True,force=False):
+    """Load the zeropoint table.
+
+    Parameters:
+    -----------
+    expnum     : explicit expnum(s) to load
+    chunk_size : size of chunk to upload
+    multiproc  : use multiprocessing?
+    force      : delete and reload existing expnum
+
+    Returns:
+    --------
+    None
+    """
+    return load_table(ZeropointTable,expnum,chunk_size,multiproc,force)
+
+def load_image_table(expnum=None,chunk_size=5e3,multiproc=True,force=False):
+    """Load the image table.
+
+    Parameters:
+    -----------
+    expnum     : explicit expnum(s) to load
+    chunk_size : size of chunk to upload
+    multiproc  : use multiprocessing?
+    force      : delete and reload existing expnum
+
+    Returns:
+    --------
+    None
+    """
+    return load_table(ImageTable,expnum,chunk_size,multiproc,force)
+
 def load_object_table(filepath=None,chunk_size=100,force=False):
     """Standalone function to load the object table.
     """
+    # UNTESTED and DEPRECATED
+
     obj = ObjectsTable()
     arc = ArchiveTable()
 
@@ -1148,79 +1228,6 @@ def load_object_table(filepath=None,chunk_size=100,force=False):
 
     logging.debug("Loading objects...")
     return obj.load_catalogs(filepath,chunk_size,force)
-
-def load_zeropoint_table(expnum=None,chunk_size=100,multiproc=True,force=False):
-    """Standalone function to load the zeropoint table.
-    """
-
-    tab = ZeropointTable()
-
-    expnums = np.atleast_1d(expnum)
-
-    # Upload all files that are 'processed'
-    logging.debug("Getting zeropoint files...")
-    database = True
-    if database:
-        arc = ArchiveTable()
-        query = "select expnum, path||'/'||filename||compression as filepath from %s where filetype='allzp';"%arc.tablename
-        inv = arc.db.query2rec(query)
-        filepath = inv['filepath']
-        if not (len(expnum)==0 or expnum[0]==None):
-            filepath = filepath[np.in1d(inv['expnum'],expnums)]
-    else:
-        filepath = archive.local.get_zeropoint_files(expnums=expnums)
-
-    loaded = tab.db.query2recarray('select filename from %s;'%tab.tablename)
-
-    # Don't upload files that are already uploaded
-    if not force:
-        filename = np.array(map(os.path.basename,filepath))
-        sel = ~np.in1d(filename,loaded['filename'])
-        filepath = filepath[sel]
-
-    if not len(filepath):
-        logging.warn("No new zeropoints to load")
-        return
-
-    logging.debug("Loading zeropoints...")
-    return tab.load_chunks(filepath,chunk_size)
-
-def load_image_table(expnum=None,chunk_size=1e4,multiproc=True,force=False):
-    """Standalone function to load the image table.
-    """
-    
-    tab = ImageTable()
-    expnum = np.atleast_1d(expnum)
-
-    logging.debug("Getting image files...")
-    database=True
-    if database:
-        arc = ArchiveTable()
-        query = "select expnum, path||'/'||filename||compression as filepath from %s where filetype='immask';"%arc.tablename
-        inv = arc.db.query2rec(query)
-        filepath = inv['filepath'].astype(str)
-        if not (len(expnum)==0 or expnum[0]==None):
-            filepath = filepath[np.in1d(inv['expnum'],expnum)]
-        del arc
-    else:
-        filepath = archive.local.get_immask_files(expnum=expnum)
-
-    loaded = tab.db.query2rec('select filename from %s;'%tab.tablename)
-
-    # Need to implement `force`...
-
-    # Don't upload files that are already uploaded
-    if not force:
-        filename = np.array(map(os.path.basename,filepath))
-        sel = ~np.in1d(filename,loaded['filename'])
-        filepath = filepath[sel]
-
-    if not len(filepath):
-        logging.warn("No new images to load.")
-        return
-
-    logging.debug("Loading images...")
-    return tab.load_chunks(filepath,chunk_size)
         
 if __name__ == "__main__":
     import argparse
