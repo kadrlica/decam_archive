@@ -7,7 +7,7 @@ import logging
 import argparse
 
 from archive.parser import LoaderParser
-from archive.dexp import create_table, finalize_table
+from archive.dexp import create_table, finalize_table, index_table
 from archive.dexp import load_zeropoint_table, ZeropointTable
 
 if __name__ == "__main__":
@@ -16,6 +16,6 @@ if __name__ == "__main__":
 
     create_table(ZeropointTable)
     load_zeropoint_table(args.expnum,chunk_size=chunk_size,force=args.force)
-    finalize_table(ZeropointTable)
+    if args.index: index_table(ZeropointTable)
 
     sys.exit(0)

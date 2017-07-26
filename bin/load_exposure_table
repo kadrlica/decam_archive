@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 """
-Get an exposure
+Load an exposure into the database.
 """
 import os,sys
 import logging
 import argparse
 
 from archive.parser import LoaderParser
-from archive.dexp import create_table, finalize_table
+from archive.dexp import create_table, finalize_table, index_table
 from archive.dexp import load_exposure_table, ExposureTable
 
 if __name__ == "__main__":
@@ -15,6 +15,6 @@ if __name__ == "__main__":
 
     create_table(ExposureTable)
     load_exposure_table(args.expnum,chunk_size=args.chunk,force=args.force)
-    finalize_table(ExposureTable)
+    if args.index: index_table(ExposureTable)
 
     sys.exit(0)

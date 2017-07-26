@@ -1011,6 +1011,20 @@ def create_table(cls, force=False):
     tab.create_table()
     tab.grant_table()
 
+def index_table(cls):
+    """Create table index.
+
+    Parameters:
+    -----------
+    cls:   The table class
+
+    Returns:
+    --------
+    None
+    """
+    tab = cls()
+    tab.create_indexes()
+    
 def finalize_table(cls):
     """Finalize the postgres table by creating indexes and granting access.
 
@@ -1044,7 +1058,7 @@ def load_exposure_table(expnum=None,chunk_size=100,multiproc=False,force=False):
     expnum = np.atleast_1d(expnum)
 
     if force and len(expnum) and expnum[0] is not None:
-        logging.info("Removing files for %i exposures..."%len(expnum))
+        logging.info("Removing files for %i exposure(s)..."%len(expnum))
         tab.delete_by_expnum(expnum)
 
     # No exposures specified, get everything from disk
@@ -1059,7 +1073,7 @@ def load_exposure_table(expnum=None,chunk_size=100,multiproc=False,force=False):
         logging.warn("No new exposures to upload.")
         return
 
-    logging.debug("Loading %i exposures..."%len(expnum))
+    logging.debug("Loading %i exposure(s)..."%len(expnum))
     return tab.load_chunks(expnum,chunk_size)
 
 def load_archive_table(expnum=None,chunk_size=1e3,multiproc=True,force=False):
@@ -1081,7 +1095,7 @@ def load_archive_table(expnum=None,chunk_size=1e3,multiproc=True,force=False):
 
     # If 'expnum' and 'force', delete existing exposures
     if force and len(expnum) and expnum[0] is not None:
-        logging.info("Removing files for %i exposures..."%len(expnum))
+        logging.info("Removing files for %i exposure(s)..."%len(expnum))
         tab.delete_by_expnum(expnum)
 
     # Get missing exposure numbers
@@ -1096,7 +1110,7 @@ def load_archive_table(expnum=None,chunk_size=1e3,multiproc=True,force=False):
         logging.warn("No new filenames to upload.")
         return
 
-    logging.debug("Loading %i exposures..."%len(expnum))
+    logging.debug("Loading %i exposure(s)..."%len(expnum))
 
     # The query for filepaths takes a long time, so split up
     nchunks = len(expnum)//chunk_size + 1
@@ -1146,7 +1160,7 @@ def load_table(cls, expnum=None, chunk_size=100, multiproc=True,force=False):
 
     # If 'force' and 'expnum' specified, delete files that are already loaded
     if force and len(expnum) and expnum[0] is not None:
-        logging.info("Removing files for %i exposures..."%len(expnum))
+        logging.info("Removing files for %i exposure(s)..."%len(expnum))
         tab.delete_by_expnum(expnum)
 
     # Upload all files that are 'processed'
@@ -1162,7 +1176,7 @@ def load_table(cls, expnum=None, chunk_size=100, multiproc=True,force=False):
         logging.warn("No new files to load.")
         return
 
-    logging.debug("Loading %s files..."%len(filepath))
+    logging.debug("Loading %s file(s)..."%len(filepath))
     return tab.load_chunks(filepath,chunk_size)
 
 def load_zeropoint_table(expnum=None,chunk_size=5e3,multiproc=True,force=False):

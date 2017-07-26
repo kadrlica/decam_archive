@@ -68,6 +68,8 @@ class LoaderParser(Parser):
         super(LoaderParser,self).__init__(*args,**kwargs)
         self.add_argument('expnum',const=None,nargs='*',type=int,
                           help='explicit exposures to load')
+        self.add_argument('--index',action='store_true',
+                          help='create table indexes')
         self.add_argument('-f','--force',action='store_true',
                           help='overwrite existing database entries')
         self.add_argument('-k','--chunk',type=int,default=100,
