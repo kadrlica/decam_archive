@@ -29,10 +29,10 @@ export PATH=/home/s1/kadrlica/bin:$PATH # for csub
 
 # Try moving back an additional day
 STARTDATE=`date --date="2 days ago"  +%Y%m%d`
-fill_night --date=$STARTDATE --outdir=$SRCDIR -v
+fill_night --njobs 5 --date=$STARTDATE --outdir=$SRCDIR -v
 
 # Load the exposure table
 echo "Submitting load_exposure_table..."
-csub load_exposure_table
+csub -o log/cron_load_exposure.log -n 5 load_exposure_table
 
 exit

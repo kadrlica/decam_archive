@@ -18,11 +18,11 @@ export PATH=$DECAM_ARCHIVE/bin:$PATH
 export PATH=/home/s1/kadrlica/bin:$PATH # for csub
 
 prune_archive --outdir=$SRCDIR
-fill_archive --outdir=$SRCDIR
+fill_archive --njobs 5 --outdir=$SRCDIR
 prune_archive --outdir=$SRCDIR
 
 # Load the exposure table
 echo "Submitting load_exposure_table..."
-csub load_exposure_table
+csub -o log/cron_load_exposure.log -n 5 load_exposure_table
 
 exit

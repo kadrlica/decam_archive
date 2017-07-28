@@ -19,6 +19,8 @@ def parser():
                         help='force overwrite')
     parser.add_argument('-l','--link',action='store_true',
                         help='link to local file')
+    parser.add_argument('--certificate',action='store_true',
+                        help='use NOAO SSL certificate (NOT IMPLEMENTED')
     parser.add_argument('--votable',
                         help='NOAO VOTable inventory.')
     return parser
