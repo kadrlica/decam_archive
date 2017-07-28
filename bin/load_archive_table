@@ -1,0 +1,21 @@
+#!/usr/bin/env python
+"""
+Load file information.
+"""
+import os,sys
+import logging
+import argparse
+
+from archive.parser import LoaderParser
+from archive.dexp import create_table, finalize_table, index_table
+from archive.dexp import load_archive_table, ArchiveTable
+    
+if __name__ == "__main__":
+    args = LoaderParser().parse_args()
+
+    create_table(ArchiveTable)
+    load_archive_table(args.expnum,chunk_size=args.chunk,force=args.force,
+                       multiproc=args.nproc)
+    if args.index: index_table(ArchiveTable)
+
+    sys.exit(0)

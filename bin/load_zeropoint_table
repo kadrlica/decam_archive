@@ -1,0 +1,21 @@
+#!/usr/bin/env python
+"""
+Load zeropoints into database.
+"""
+import os,sys
+import logging
+import argparse
+
+from archive.parser import LoaderParser
+from archive.dexp import create_table, finalize_table, index_table
+from archive.dexp import load_zeropoint_table, ZeropointTable
+
+if __name__ == "__main__":
+    args = LoaderParser().parse_args()
+    chunk_size=59*args.chunk # 59 images per exposure
+
+    create_table(ZeropointTable)
+    load_zeropoint_table(args.expnum,chunk_size=chunk_size,force=args.force)
+    if args.index: index_table(ZeropointTable)
+
+    sys.exit(0)

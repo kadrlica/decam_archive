@@ -424,8 +424,8 @@ objects:
     RA_DEC:
       query: CREATE INDEX {table}_{name}_idx ON {table} (RA,DEC);
 
-zeropoints:
-  table: zeropoints
+zeropoint:
+  table: zeropoint
   columns: 
     FILENAME:
       type: VARCHAR(60)
@@ -447,6 +447,8 @@ zeropoints:
       type: FLOAT4
     SIGMA_MAG_ZERO:
       type: FLOAT4
+    #EFF_MAG_ZERO:
+    #  type: FLOAT4
     FLAG:
       type: INTEGER
   indexes:
@@ -467,3 +469,239 @@ proctag:
   indexes:
     PRIMARY_KEY:
       query: ALTER TABLE {table} ADD CONSTRAINT {table}_pkey PRIMARY KEY (EXPNUM,TAG);
+
+image:
+  table: image
+  columns:
+    AIRMASS:
+      type: FLOAT4
+    #AMPSECA:
+    #  type: VARCHAR(30)
+    #AMPSECB:
+    #  type: VARCHAR(30)
+    BAND:
+      type: VARCHAR(5)
+      index: BTREE
+    #BIASSECA:
+    #  type: VARCHAR(30)
+    #BIASSECB:
+    #  type: VARCHAR(30)
+    #BSCALE:
+    #  type: FLOAT4
+    #BUNIT:
+    #  type: VARCHAR(10)
+    #BZERO:
+    #  type: FLOAT4
+    CAMSYM:
+      type: VARCHAR(1)
+    CCDNAME:
+      type: VARCHAR(40)
+    CCDNUM:
+      type: SMALLINT
+    #CCDSUM:
+    #  type: VARCHAR(10)
+    CD1_1:
+      type: FLOAT8
+    CD1_2:
+      type: FLOAT8
+    CD2_1:
+      type: FLOAT8
+    CD2_2:
+      type: FLOAT8
+    CROSSRA0:
+      type: VARCHAR(1)
+    CRPIX1:
+      type: FLOAT8
+    CRPIX2:
+      type: FLOAT8
+    CRVAL1:
+      type: FLOAT8
+    CRVAL2:
+      type: FLOAT8
+    CTYPE1:
+      type: VARCHAR(10)
+    CTYPE2:
+      type: VARCHAR(10)
+    CUNIT1:
+      type: VARCHAR(20)
+    CUNIT2:
+      type: VARCHAR(20)
+    DATASEC:
+      type: VARCHAR(30)
+    DECC1:
+      type: FLOAT8
+    DECC2:
+      type: FLOAT8
+    DECC3:
+      type: FLOAT8
+    DECC4:
+      type: FLOAT8
+    DECCMAX:
+      type: FLOAT8
+    DECCMIN:
+      type: FLOAT8
+    DEC_CENT:
+      type: FLOAT8
+    DETSEC:
+      type: VARCHAR(30)
+    #DEVICE_ID:
+    #  type: INTEGER
+    ELLIPTIC:
+      type: FLOAT4
+    EQUINOX:
+      type: FLOAT4
+    EXPNUM:
+      type: INTEGER
+    EXPTIME:
+      type: FLOAT4
+    #FIELD:
+    #  type: VARCHAR(20)
+    FILENAME:
+      type: VARCHAR(60)
+      index: PK
+    FILETYPE:
+      type: VARCHAR(30)
+    FWHM:
+      type: FLOAT4
+    GAINA:
+      type: FLOAT4
+    GAINB:
+      type: FLOAT4
+    GCOUNT:
+      type: SMALLINT
+    LTM1_1:
+      type: FLOAT4
+    LTM2_2:
+      type: FLOAT4
+    LTV1:
+      type: FLOAT4
+    LTV2:
+      type: FLOAT4
+    NAXIS1:
+      type: INTEGER
+    NAXIS2:
+      type: INTEGER
+    #NEXTEND:
+    #  type: SMALLINT
+    NITE:
+      type: INTEGER
+      index: BTREE
+    #NOBJECT_SCAMP:
+    #  type: INTEGER
+    #PCOUNT:
+    #  type: INTEGER
+    #PFW_ATTEMPT_ID:
+    #  type: INTEGER
+    #PSFSCALE:
+    #  type: FLOAT4
+    #PSF_BETA:
+    #  type: FLOAT4
+    #PSF_FWHM:
+    #  type: FLOAT4
+    PV1_0:
+      type: FLOAT8
+    PV1_1:
+      type: FLOAT8
+    PV1_10:
+      type: FLOAT8
+    PV1_2:
+      type: FLOAT8
+    PV1_3:
+      type: FLOAT8
+    PV1_4:
+      type: FLOAT8
+    PV1_5:
+      type: FLOAT8
+    PV1_6:
+      type: FLOAT8
+    PV1_7:
+      type: FLOAT8
+    PV1_8:
+      type: FLOAT8
+    PV1_9:
+      type: FLOAT8
+    PV2_0:
+      type: FLOAT8
+    PV2_1:
+      type: FLOAT8
+    PV2_10:
+      type: FLOAT8
+    PV2_2:
+      type: FLOAT8
+    PV2_3:
+      type: FLOAT8
+    PV2_4:
+      type: FLOAT8
+    PV2_5:
+      type: FLOAT8
+    PV2_6:
+      type: FLOAT8
+    PV2_7:
+      type: FLOAT8
+    PV2_8:
+      type: FLOAT8
+    PV2_9:
+      type: FLOAT8
+    RAC1:
+      type: FLOAT8
+    RAC2:
+      type: FLOAT8
+    RAC3:
+      type: FLOAT8
+    RAC4:
+      type: FLOAT8
+    RACMAX:
+      type: FLOAT8
+    RACMIN:
+      type: FLOAT8
+    RADESYS:
+      type: VARCHAR(10)
+    RA_CENT:
+      type: FLOAT8
+    RDNOISEA:
+      type: FLOAT4
+    RDNOISEB:
+      type: FLOAT4
+    SATURATA:
+      type: FLOAT4
+    SATURATB:
+      type: FLOAT4
+    SATURATE:
+      type: FLOAT4
+    SCAMPCHI:
+      type: FLOAT4
+    SCAMPFLG:
+      type: SMALLINT
+    SCAMPNUM:
+      type: INTEGER
+    #SEESIGA:
+    #  type: FLOAT4
+    #SKY:
+    #  type: FLOAT4
+    SKYBRITE:
+      type: FLOAT4
+    SKYSIGMA:
+      type: FLOAT4
+    SKYVARA:
+      type: FLOAT4
+    SKYVARB:
+      type: FLOAT4
+    #TILENAME:
+    #  type: VARCHAR(20)
+    #TRIMSEC:
+    #  type: VARCHAR(30)
+    WCSAXES:
+      type: SMALLINT
+    #WCSDIM:
+    #  type: SMALLINT
+    #ZERO:
+    #  type: FLOAT4
+    #ZP:
+    #  type: FLOAT4
+  indexes:
+    RADEC:
+      query: CREATE INDEX {table}_{name}_idx ON {table} (FILENAME,RA_CENT,DEC_CENT);
+    NAME_RADECMINMAX:
+      query: CREATE INDEX {table}_{name}_idx ON {table} (FILENAME,RACMIN,RACMAX,DECCMIN,DECCMAX);
+    NAME_EXP_CCD:
+      query: CREATE INDEX {table}_{name}_idx ON {table} (FILENAME,EXPNUM,CCDNUM);
