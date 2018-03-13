@@ -14,7 +14,8 @@ if __name__ == "__main__":
     args = LoaderParser().parse_args()
 
     create_table(ExposureTable)
-    load_exposure_table(args.expnum,chunk_size=args.chunk,force=args.force)
+    load_exposure_table(args.expnum, chunk_size=args.chunk, force=args.force,
+                        paths=args.paths)
     if args.index: index_table(ExposureTable)
 
     sys.exit(0)
