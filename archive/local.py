@@ -27,6 +27,7 @@ LOCAL_PATHS = [
 
 # Preference should be given to fist entry
 BLISS_PATHS = [
+    '/data/des61.b/data/BLISS',
     '/data/des60.b/data/BLISS',
     '/data/des50.b/data/BLISS',
     ]
