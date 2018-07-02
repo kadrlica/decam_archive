@@ -18,6 +18,14 @@ BLISS_Y17T2:
   desc: >
     First tag of exposures in the nominal BLISS 2017 footprint. 
     Requirements are placed on t_eff > 0.1 and t_eff*exptime > 30s.
-    
-    
-    
+BLISS_Y18T1:
+  name: BLISS_Y18T1
+  filename: null 
+  query: >
+    select expnum from exposure where
+    ABS(radeg - 177.511) < 7.0 and ABS(decdeg - -41.7652) < 5.0
+    and propid not like '%-9999'
+    and band in ('g','r','i','z')
+    and exptime >= 30;
+  desc: >
+    Tag of exposures around the candidate at 177.511, -41.7652.
