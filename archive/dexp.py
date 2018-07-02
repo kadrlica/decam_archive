@@ -757,6 +757,8 @@ class ProctagTable(Table):
         proctag: array of proctag values
         """
         proctag = self.create_proctag(tag,query,expnum)
+        msg = "Creating proctag '%s' with %i exposures"%(tag,len(proctag))
+        logging.info(msg)
         self.db.load_data(self.tablename,proctag)
         return proctag
 
@@ -1007,9 +1009,10 @@ def create_table(cls, force=False):
         else:
             msg = "The '%s' table already exists."%tablename
             logging.info(msg)
-            return
+            return tab
     tab.create_table()
     tab.grant_table()
+    return tab
 
 def index_table(cls):
     """Create table index.
