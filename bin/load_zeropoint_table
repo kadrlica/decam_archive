@@ -15,7 +15,8 @@ if __name__ == "__main__":
     chunk_size=59*args.chunk # 59 images per exposure
 
     create_table(ZeropointTable)
-    load_zeropoint_table(args.expnum,chunk_size=chunk_size,force=args.force)
+    load_zeropoint_table(args.expnum, chunk_size=chunk_size, force=args.force,
+                         paths=args.paths)
     if args.index: index_table(ZeropointTable)
 
     sys.exit(0)

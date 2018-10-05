@@ -1040,7 +1040,8 @@ def finalize_table(cls):
     tab.create_indexes()
     tab.grant_table()
 
-def load_exposure_table(expnum=None,chunk_size=100,multiproc=False,force=False):
+def load_exposure_table(expnum=None,chunk_size=100,multiproc=False,force=False,
+                        dryrun=False, paths=None):
     """Load the exposure table from the raw file inventory on disk.
 
     Parameters:
@@ -1059,11 +1060,11 @@ def load_exposure_table(expnum=None,chunk_size=100,multiproc=False,force=False):
 
     if force and len(expnum) and expnum[0] is not None:
         logging.info("Removing files for %i exposure(s)..."%len(expnum))
-        tab.delete_by_expnum(expnum)
+        if not dryrun: tab.delete_by_expnum(expnum)
 
     # No exposures specified, get everything from disk
     if not len(expnum) or expnum[0] is None:
-        expnum = np.unique(archive.local.get_inventory()['expnum'])
+        expnum = np.unique(archive.local.get_inventory(paths)['expnum'])
 
     # Exposures that are not loaded
     sel = ~np.in1d(expnum,tab.get_expnum())
@@ -1074,9 +1075,11 @@ def load_exposure_table(expnum=None,chunk_size=100,multiproc=False,force=False):
         return
 
     logging.debug("Loading %i exposure(s)..."%len(expnum))
-    return tab.load_chunks(expnum,chunk_size)
+    if not dryrun:
+        return tab.load_chunks(expnum,chunk_size)
 
-def load_archive_table(expnum=None,chunk_size=1e3,multiproc=True,force=False):
+def load_archive_table(expnum=None,chunk_size=1e3,multiproc=True,force=False,
+                       dryrun=False,paths=None):
     """Load the file archive table from the reduced file inventory on disk.
 
     Parameters:
@@ -1085,6 +1088,7 @@ def load_archive_table(expnum=None,chunk_size=1e3,multiproc=True,force=False):
     chunk_size : size of chunk of exposures to load
     multiproc  : number of multiprocessing cores to use
     force      : overwrite of existing file info
+    dryrun     : don't execute anything
 
     Returns:
     --------
@@ -1096,7 +1100,7 @@ def load_archive_table(expnum=None,chunk_size=1e3,multiproc=True,force=False):
     # If 'expnum' and 'force', delete existing exposures
     if force and len(expnum) and expnum[0] is not None:
         logging.info("Removing files for %i exposure(s)..."%len(expnum))
-        tab.delete_by_expnum(expnum)
+        if not dryrun: tab.delete_by_expnum(expnum)
 
     # Get missing exposure numbers
     inv = tab.get_missing_expnum()
@@ -1120,11 +1124,11 @@ def load_archive_table(expnum=None,chunk_size=1e3,multiproc=True,force=False):
 
         # Get all the files
         files = archive.local.get_reduced_files(expnum=chunk,suffix='_*.fits*',
-                                                multiproc=multiproc)
+                                                multiproc=multiproc,paths=paths)
         psffiles = archive.local.get_psfex_files(expnum=chunk,
-                                                 multiproc=multiproc)
+                                                 multiproc=multiproc,paths=paths)
         zpfiles = archive.local.get_zeropoint_files(expnum=chunk,
-                                                    multiproc=multiproc)
+                                                    multiproc=multiproc,paths=paths)
 
         filepath = np.unique(np.concatenate([files,zpfiles,psffiles]))
      
@@ -1137,11 +1141,12 @@ def load_archive_table(expnum=None,chunk_size=1e3,multiproc=True,force=False):
                where e.expnum = a.expnum and a.band is NULL
             """%dict(archive=tab.tablename,exposure=ExposureTable().tablename)
     logging.debug(query)
-    tab.db.execute(query)
+    if not dryrun: tab.db.execute(query)
 
     return
 
-def load_table(cls, expnum=None, chunk_size=100, multiproc=True,force=False):
+def load_table(cls, expnum=None, chunk_size=100, multiproc=True, force=False,
+               dryrun=False, paths=None):
     """Standalone function to load a table from files.
 
     Parameters:
@@ -1150,6 +1155,8 @@ def load_table(cls, expnum=None, chunk_size=100, multiproc=True,force=False):
     chunk_size : size of chunk to upload
     multiproc  : use multiprocessing?
     force      : delete and reload existing expnum
+    dryrun     : don't execute anything
+    paths      : path(s) to search for expnum
 
     Returns:
     --------
@@ -1161,7 +1168,7 @@ def load_table(cls, expnum=None, chunk_size=100, multiproc=True,force=False):
     # If 'force' and 'expnum' specified, delete files that are already loaded
     if force and len(expnum) and expnum[0] is not None:
         logging.info("Removing files for %i exposure(s)..."%len(expnum))
-        tab.delete_by_expnum(expnum)
+        if not dryrun: tab.delete_by_expnum(expnum)
 
     # Query for all files that are 'processed'
     logging.debug("Getting files from database...")
@@ -1177,9 +1184,12 @@ def load_table(cls, expnum=None, chunk_size=100, multiproc=True,force=False):
         return
 
     logging.debug("Loading %s file(s)..."%len(filepath))
-    return tab.load_chunks(filepath,chunk_size)
 
-def load_zeropoint_table(expnum=None,chunk_size=5e3,multiproc=True,force=False):
+    if not dryrun:
+        return tab.load_chunks(filepath,chunk_size)
+
+def load_zeropoint_table(expnum=None,chunk_size=5e3,multiproc=True,force=False,
+                         dryrun=False, paths=None):
     """Load the zeropoint table.
 
     Parameters:
@@ -1188,14 +1198,18 @@ def load_zeropoint_table(expnum=None,chunk_size=5e3,multiproc=True,force=False):
     chunk_size : size of chunk to upload
     multiproc  : use multiprocessing?
     force      : delete and reload existing expnum
+    dryrun     : don't execute anything
+    paths      : path(s) to search for expnum
 
     Returns:
     --------
     None
     """
-    return load_table(ZeropointTable,expnum,chunk_size,multiproc,force)
+    return load_table(ZeropointTable,expnum,chunk_size,multiproc,force,
+                      dryrun=dryrun,paths=paths)
 
-def load_image_table(expnum=None,chunk_size=5e3,multiproc=True,force=False):
+def load_image_table(expnum=None,chunk_size=5e3,multiproc=True,force=False,
+                     dryrun=False, paths=None):
     """Load the image table.
 
     Parameters:
@@ -1204,12 +1218,15 @@ def load_image_table(expnum=None,chunk_size=5e3,multiproc=True,force=False):
     chunk_size : size of chunk to upload
     multiproc  : use multiprocessing?
     force      : delete and reload existing expnum
+    dryrun     : don't execute anything
+    paths      : path(s) to search for expnum
 
     Returns:
     --------
     None
     """
-    return load_table(ImageTable,expnum,chunk_size,multiproc,force)
+    return load_table(ImageTable,expnum,chunk_size,multiproc,force,
+                      dryrun=dryrun, paths=paths)
 
 def load_object_table(filepath=None,chunk_size=100,force=False):
     """Standalone function to load the object table.
