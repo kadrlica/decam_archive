@@ -1163,7 +1163,7 @@ def load_table(cls, expnum=None, chunk_size=100, multiproc=True,force=False):
         logging.info("Removing files for %i exposure(s)..."%len(expnum))
         tab.delete_by_expnum(expnum)
 
-    # Upload all files that are 'processed'
+    # Query for all files that are 'processed'
     logging.debug("Getting files from database...")
     inv = tab.get_missing_filepaths()
     filepath = inv['filepath']
