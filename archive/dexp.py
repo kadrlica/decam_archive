@@ -445,7 +445,11 @@ class ImageTable(Table):
         # Can't have NaNs in int column
         try: hdr['HPIX'] = int(ang2pix(4096,hdr['RA_CENT'],hdr['DEC_CENT']))
         except KeyError: hdr['HPIX'] = -1
-         
+
+        # NAXIS1 is changed due to compression
+        hdr['NAXIS1'] = 2048
+        hdr['NAXIS2'] = 4096
+
         return hdr
 
     def delete_image(self,filename):
@@ -744,7 +748,7 @@ class ProctagTable(Table):
         self.tags = yaml.load(open(self._tags))
 
     def load_proctag(self, tag, query=None, expnum=None):
-        """ Create the proctag and load to db. Use tag lookup query.
+        """ Create the proctag and load to db. Use just 'tag' to lookup query.
 
         Parameters:
         -----------
@@ -761,7 +765,7 @@ class ProctagTable(Table):
         return proctag
 
     def create_proctag(self, tag, query=None, expnum=None):
-        """ Create the proctag data array.
+        """ Create the proctag data array from a tag, query, or expnum
         
         Parameters:
         -----------
@@ -1259,7 +1263,11 @@ def load_object_table(filepath=None,chunk_size=100,force=False):
 
     logging.debug("Loading objects...")
     return obj.load_catalogs(filepath,chunk_size,force)
-        
+
+def load_proctag_table(tag,query=None,expnum=None):
+    proc = ProctagTable()
+    return proc.load_proctag(tag, query, expnum)
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description=__doc__)
