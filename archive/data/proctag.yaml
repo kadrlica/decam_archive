@@ -29,3 +29,15 @@ BLISS_Y18T1:
     and exptime >= 30;
   desc: >
     Tag of exposures around the candidate at 177.511, -41.7652.
+BLISS_Y18T2:
+  name: BLISS_Y18T2
+  filename: null 
+  query: >
+    select e.expnum
+    from exposure e, qa_summary q where
+    e.expnum = q.expnum
+    and e.band in ('g','r','i','z')
+    and e.radeg is not NULL and e.decdeg is not NULL
+    and q.t_eff > 0.1 and e.exptime >= 30;
+  desc: >
+    Tag of all BLISS exposures on 2018-11-16.
