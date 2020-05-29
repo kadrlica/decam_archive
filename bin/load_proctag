@@ -8,16 +8,16 @@ import argparse
 
 from archive.parser import LoaderParser
 from archive.dexp import create_table, finalize_table, index_table
-from archive.dexp import ProctagTable
+from archive.dexp import ProctagTable, load_proctag_table
 
 if __name__ == "__main__":
     parser = LoaderParser()
     parser.add_argument('-t','--tag',required=True,
                         help = "Tag to create (must be in 'proctag.yaml')")
     args = parser.parse_args()
-
-    tab = create_table(ProctagTable)
-    tab.load_proctag(args.tag)
+    
+    create_table(ProctagTable)
+    tag = load_proctag_table(args.tag)
 
     if args.index: index_table(ProctagTable)
 
