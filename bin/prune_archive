@@ -58,3 +58,8 @@ if __name__ == "__main__":
 
             # Remove the corrupted file
             remove_file(f,args.dryrun)
+        
+        # Remove empty directories
+        #https://unix.stackexchange.com/a/396796/153402
+        cmd = "find . -type d -empty -delete"
+        #subprocess.call(cmd,shell=True)
