@@ -1063,7 +1063,8 @@ def load_exposure_table(expnum=None,chunk_size=100,multiproc=False,force=False):
 
     # No exposures specified, get everything from disk
     if not len(expnum) or expnum[0] is None:
-        expnum = np.unique(archive.local.get_inventory()['expnum'])
+        inv = archive.local.get_inventory()
+        expnum = np.unique(inv['expnum'])
 
     # Exposures that are not loaded
     sel = ~np.in1d(expnum,tab.get_expnum())
