@@ -7,6 +7,7 @@ __author__ = "Alex Drlica-Wagner"
 import os.path
 from datetime import timedelta
 import warnings
+import errno    
 
 import numpy as np
 import pandas as pd
@@ -150,3 +151,14 @@ def ang2pix(nside, lon, lat):
     theta = np.radians(90. - lat)
     phi = np.radians(lon)
     return hp.ang2pix(nside, theta, phi)
+
+def mkdir(path):
+    # https://stackoverflow.com/a/600612/4075339
+    try:
+        os.makedirs(path)
+    except OSError as exc:  # Python >2.5
+        if exc.errno == errno.EEXIST and os.path.isdir(path):
+            pass
+        else:
+            raise
+    return path
