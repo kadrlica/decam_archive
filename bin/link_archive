@@ -12,15 +12,20 @@ import time
 from archive.parser import VerboseAction, Parser
 from archive import DIRNAME,BASENAME,BASEDIR
 from archive import local
+from archive.utils import mkdir
 
 def parser():
     parser = Parser(description=__doc__)
+    parser.add_argument('--indir',default=None,
+                        help='input directory')
     parser.add_argument('--outdir',default=BASEDIR,
                         help='directory of local archive')
     parser.add_argument('--logdir',nargs='?',default=None,const='.',
                         help='directory for log files.')
     parser.add_argument('-n','--njobs',type=int,default=10,
                         help='number of jobs to run concurrently')
+    parser.add_argument('-q','--queue',default='vanilla',
+                        help='submission queue')
     parser.add_argument('-s','--sleep',type=float,default=0,
                         help='time between submissions')
     return parser
@@ -28,24 +33,23 @@ def parser():
 if __name__ == "__main__":
     args = parser().parse_args()
 
-    logging.info("Loading full inventory...")
-    inv_all = local.get_inventory()
+    logging.info("Loading input inventory...")
+    inv_in = local.get_inventory(args.indir)
 
     logging.info("Loading output inventory...")
-    inv = local.get_inventory(args.outdir)
+    inv_out = local.get_inventory(args.outdir)
 
     # Exposures that are not in output directory
-    sel = ~np.in1d(inv_all['expnum'],inv['expnum'])
+    sel = ~np.in1d(inv_in['expnum'],inv_out['expnum'])
     if sel.sum() == 0:
         logging.info("No exposures to fill.")
 
-    files = inv_all['filename'][sel]
-    nites = inv_all['nite'][sel]
+    files = inv_in['filename'][sel]
+    nites = inv_in['nite'][sel]
     _,idx = np.unique(nites,return_index=True)
 
     logdir = args.logdir
-    if logdir and not os.path.exists(logdir): 
-        os.makedirs(logdir)
+    if logdir: mkdir(logdir)
 
     num = len(idx)
     for i,(filename,nite) in enumerate(zip(files[idx],nites[idx])):
@@ -54,18 +58,19 @@ if __name__ == "__main__":
         outdir = os.path.join(args.outdir,DIRNAME)
         outdir = outdir.format(nite=nite)
 
-        if not os.path.exists(outdir) and not args.dryrun:
-            os.makedirs(outdir)
 
         # Build the command
         info = '({:>{width}}/{}): '.format(i+1,num,width=len(str(num)))
         
         log = '-o %s '%os.path.join(logdir,'%s.log'%nite) if logdir else ''
-        njobs = '-n %s '%(args.njobs) if args.njobs else ''
+        njobs = '-n %s'%(args.njobs) if args.njobs else ''
+        queue = '-q %s'%(args.queue)
+        sub = 'csub {njobs} {log} {queue} '.format(njobs=njobs,log=log,queue=queue)
 
-        sub = 'csub {njobs} {log}'.format(njobs=njobs,log=log)
-
-        cmd = '"ln -s {}/*.fits.fz {}"'.format(dirname,outdir)
+        if not os.path.exists(outdir):
+            cmd = '"ln -s {} {}"'.format(dirname,outdir)
+        else:
+            cmd = '"ln -s {}/*.fits.fz {}"'.format(dirname,outdir)
 
         logging.info(info + sub + cmd)
         if not args.dryrun: subprocess.call(sub+cmd,shell=True)    
