@@ -19,22 +19,34 @@ import numpy as np
 import numpy.lib.recfunctions as recfuncs
 import astropy.io.votable as vot
 
-from archive.utils import date2nite, filename2expnum
+from archive.utils import date2nite, filename2expnum, get_datadir
 
-NOAO_URL = "http://archive.noao.edu/search/"
+#NOAO_URL = "http://archive.noao.edu/search/"
+#--AND (start_date >= '2012-11-01') -- Start of SV
+
+NOAO_URL = "http://archive1.dm.noao.edu/search/"
 NOAO_QUERY = """
 SELECT {columns}
 FROM voi.siap 
 WHERE (telescope = 'ct4m' AND instrument = 'decam')
 AND (proctype = 'RAW' AND obstype = 'object')
-AND (start_date >= '2012-11-01')
-AND (release_date between '{tstart:%Y-%m-%d}' and '{tstop:%Y-%m-%d}')
+AND (start_date >= '{tstart:%Y-%m-%d}')
+AND ( (release_date between '{tstart:%Y-%m-%d}' and '{tstop:%Y-%m-%d}') {propids})
 AND left(filter, 1) in ({filters})
 AND exposure >= {exptime}
 AND dtacqnam like '%DECam_{expnum}.fits.fz'
 ORDER BY date_obs ASC LIMIT {limit}
 """
-NOAO_CURL = "curl {certificate} -k --show-error --retry 5 --output {outfile} {url}"
+
+NOAO_EXPNUM_QUERY = """
+SELECT {columns}
+FROM voi.siap 
+WHERE (telescope = 'ct4m' AND instrument = 'decam')
+AND dtacqnam like '%DECam_{expnum}.fits.fz'
+ORDER BY date_obs ASC LIMIT {limit}
+"""
+
+NOAO_CURL = "curl {certificate} -k --show-error --retry 0 --output {outfile} {url}"
 NOAO_WGET = "wget {certificate} -t 50 --retry-connrefused --waitretry 30 --progress=dot -e dotbytes=4M --timeout 30 -O {outfile} {url} || rm -f {outfile}"
 
 # An NOAO SSL certificate can be generated here:
@@ -42,7 +54,39 @@ NOAO_WGET = "wget {certificate} -t 50 --retry-connrefused --waitretry 30 --progr
 # https://archive.noao.edu/security/get_user_certificate
 # Add to wget with `--certificate {cert}`
 # Expires every two weeks...
-NOAO_CERT = '/home/s1/kadrlica/projects/decam_archive/data/certificates/drlicawagnera_20170313.cert'
+# Make sure certificate not world readable:
+# > chmod go-r {cert}
+CERTDIR='/data/des51.b/data/DTS/src/decam_archive/certificates'
+NOAO_CERT = os.path.join(CERTDIR,'drlicawagnera-20200130.cert')
+
+# Corrupted or otherwise bad exposures that shouldn't be downloaded
+BLACKLIST = np.loadtxt(os.path.join(get_datadir(),'blacklist.txt'))
+
+# My propids
+PROPIDS = (
+    #'2016A-0196', # SOAR RR Lyrae (Kathy)
+    '2016A-0366', # MagLiteS-I
+    #'2016B-0140', # SOAR RR Lyrae (Kathy)
+    '2017A-0260', # BLISS-I
+    '2017A-0388', # DERosita (Alfredo)
+    '2017A-0913', # Luidhy
+    '2018A-0242', # MagLiteS-II
+    '2018A-0273', # PALS
+    '2018A-0386', # DERosita (Alfredo)
+    '2018A-0914', # BLINK
+    '2019A-0240', # IceCube
+    '2019A-0272', # DeRosita (Alfredo)
+    '2019A-0305', # DELVE
+    '2019B-0323', # DeRosita (Alfredo)
+    '2019A-0235', # DES GW
+    '2019B-0353', # Andreoni GW
+    '2019B-0371', # Soares-Santos GW
+    '2019B-0372', # Soares-Santos GW
+    '2019B-1014', # Felipe Olivares
+    '2020A-0399', # DeRositas (Alfredo)
+    '2020A-0908', # Felipe Olivares
+    '2020A-0238', # RRL (Martinez-Vazquez)
+    )
 
 def get_noao_query(**kwargs):
     kwargs = get_noao_query_kwargs(**kwargs)
@@ -59,12 +103,17 @@ def get_noao_query_kwargs(**kwargs):
         'start_date', 
         'filesize', 
         'dtpropid', 
-        'md5sum'
+        'md5sum',
+        'noao_id' # only required when logged in
     ]
-
-    defaults = dict(tstart=dateparse('2012-11-01'), tstop=date.today(),
+    # Start of DECam is '2012-11-01', but due to query limits, start later
+    defaults = dict(tstart=dateparse('2017-01-01'), 
+                    tstop=date.today() - timedelta(1),
                     exptime=30,filters=('u','g','r','i','z','Y'),
-                    limit=250000,expnum='%')
+                    limit=250000,expnum='%',
+                    propids=PROPIDS
+                    )
+                  
 
     defaults['columns'] = [
         'reference', 
@@ -99,12 +148,19 @@ def get_noao_query_kwargs(**kwargs):
     if isinstance(kwargs['expnum'],int):
         kwargs['expnum'] = '{expnum:08d}'.format(**kwargs)
 
+    if not kwargs['propids']: 
+        kwargs['propids'] = ''
+    else:
+        if not isinstance(kwargs['propids'],basestring):
+            kwargs['propids'] = ','.join(["'%s'"%p for p in kwargs['propids']])
+        kwargs['propids'] = 'OR dtpropid in (%s)'%(kwargs['propids'])
+
     return kwargs
 
 def get_csrf_token(session, url=None):
-    if not url:
-        #http://archive.noao.edu/search/query
-        url = os.path.join(NOAO_URL,'query')
+    #http://archive1.dm.noao.edu/search/query
+    if not url: url = os.path.join(NOAO_URL,'query')
+    logging.debug(url)
     response = session.get(url)
     pattern = 'meta content="(.*)" name="csrf-token"'
     token = re.search(pattern,str(response.content)).group(1)
@@ -114,6 +170,7 @@ def get_certificate(username=None,password=None):
     if username is None or password is None:
         cert = None
     # Actually get the certificate...
+    raise Exception('Automated certificate retrieval not implemented')
     return cert
 
 def request_votable(query=None):
@@ -122,6 +179,7 @@ def request_votable(query=None):
     """
     if logging.getLogger().getEffectiveLevel <= logging.DEBUG:
         import httplib
+        #httplib.HTTPConnection.debuglevel = 2
         httplib.HTTPConnection.debuglevel = 1
 
     session = requests.session()
@@ -141,31 +199,37 @@ def request_votable(query=None):
     logging.debug('\n')
 
     # Setup the query content to get VOTable
-    #http://archive.noao.edu/search/query_content
+    #http://archive1.dm.noao.edu/search/query_content
     url = os.path.join(NOAO_URL,'query_content')
+    logging.debug(url)
     response = session.get(url,headers=headers)
     response.raise_for_status()
+    #logging.debug(response.text)
 
     if not query: query = get_noao_query()
     logging.debug('\n'+query)
-        
-    #http://archive.noao.edu/search/send_advanced_query
+
+    #http://archive1.dm.noao.edu/search/send_advanced_query
     url = os.path.join(NOAO_URL,'send_advanced_query')
     body = dict(reset_datagrid='true',advanced_sql=query)
+    logging.debug(url)
+    #logging.debug(session.get(url,headers=headers).text)
     response = session.post(url,data=body,headers=headers)
+    logging.debug(response.text)
     response.raise_for_status()
  
     logging.debug('\n %s %s \n'%(response.status_code, response.text))
 
-    #http://archive.noao.edu/search/records_as_votable
+    #http://archive1.dm.noao.edu/search/records_as_votable
     url = os.path.join(NOAO_URL,"records_as_votable")
     params = dict(sort_key='date_obs',sort_order='ASC',
                   coords_format='decimal_degrees',datagrid_name='All',
                   all_rows='true')
+    logging.debug(url)
     response = session.get(url,params=params,headers=headers)
     response.raise_for_status()
 
-    logging.info('Downloaded VOTable with %s rows'%len(response.content.split('/n')))
+    logging.info('GET VOTable with %s lines'%len(response.content.split('/n')))
     return response.content
 
 def get_votable(query):
@@ -175,6 +239,7 @@ def get_votable(query):
     fileobj = BytesIO()
     fileobj.write(data)
     votable = vot.parse_single_table(fileobj)
+    logging.info("Parsed VOTable with %i rows"%len(votable.array))
 
     return votable
 
@@ -271,9 +336,28 @@ def retry(cmd, retry=25):
         raise Exception("Failed to execute command.")
 
 def download_exposure(expnum,outfile=None,votable=None,certificate=None):
+    if certificate is None: certificate=NOAO_CERT 
+        
+    if np.in1d(expnum,BLACKLIST).sum():
+        msg = "Blacklisted exposure: %i"%expnum
+        raise Exception(msg)
+
     data = match_expnum(expnum,votable)
     path = data['reference']
     origsize = data['filesize']
+
+    # If the release date is after today, then must be restricted
+    release = dateparse(data['release_date'])
+    today = datetime.today()
+    if release > today:
+        logging.info("Future release date; attempting secure download")
+        path = path.replace('http:','https:').replace(':7003',':7503')
+
+    if certificate:
+        mtime = datetime.fromtimestamp(os.path.getmtime(certificate))
+        msg = "Using certificate: %s"%os.path.basename(certificate)
+        msg += " (%s hours old)"%(str(today-mtime)[:-13])
+        logging.info(msg)
 
     if not outfile:
         outfile = 'DECam_{expnum:08d}.fits.fz'.format(expnum=expnum)
@@ -290,7 +374,7 @@ def download_exposure(expnum,outfile=None,votable=None,certificate=None):
     cmd = cmd.format(url=path,outfile=outfile,certificate=cert)
 
     logging.info(cmd)
-    retry(cmd,retry=25)
+    retry(cmd,retry=3)
              
     # Check the file size (might be unnecessary with wget)
     filesize = os.path.getsize(outfile)
