@@ -14,8 +14,8 @@ if __name__ == "__main__":
     args = LoaderParser().parse_args()
 
     create_table(ArchiveTable)
-    load_archive_table(args.expnum,chunk_size=args.chunk,force=args.force,
-                       multiproc=args.nproc)
+    load_archive_table(args.expnum, chunk_size=args.chunk, force=args.force,
+                       multiproc=args.nproc, paths=args.paths)
     if args.index: index_table(ArchiveTable)
 
     sys.exit(0)

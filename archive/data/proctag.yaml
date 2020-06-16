@@ -1,8 +1,43 @@
 BLISS_Y17T1:
   name: BLISS_Y17T1
+  filename: null
   query: >
     select expnum from exposure where
     propid != '2012B-0001' and propid not like '%-9999'
     and band in ('g','r','i','z')
     and ABS(glat) > 10
     and exptime >= 30;
+  desc: >
+    Preliminary tag of all non-DES, non-engineering exposures with
+    exptime > 30s on 2017-04-25. Mostly just a test of the tagging
+    machinery.
+BLISS_Y17T2:
+  name: BLISS_Y17T2
+  filename: '/data/des50.b/data/kadrlica/projects/bliss/cat/data/bliss_survey_v2.csv'
+  query: null
+  desc: >
+    First tag of exposures in the nominal BLISS 2017 footprint. 
+    Requirements are placed on t_eff > 0.1 and t_eff*exptime > 30s.
+BLISS_Y18T1:
+  name: BLISS_Y18T1
+  filename: null 
+  query: >
+    select expnum from exposure where
+    ABS(radeg - 177.511) < 7.0 and ABS(decdeg - -41.7652) < 5.0
+    and propid not like '%-9999'
+    and band in ('g','r','i','z')
+    and exptime >= 30;
+  desc: >
+    Tag of exposures around the candidate at 177.511, -41.7652.
+BLISS_Y18T2:
+  name: BLISS_Y18T2
+  filename: null 
+  query: >
+    select e.expnum
+    from exposure e, qa_summary q where
+    e.expnum = q.expnum
+    and e.band in ('g','r','i','z')
+    and e.radeg is not NULL and e.decdeg is not NULL
+    and q.t_eff > 0.1 and e.exptime >= 30;
+  desc: >
+    Tag of all BLISS exposures on 2018-11-16.

@@ -76,6 +76,8 @@ class LoaderParser(Parser):
                           help='chunk size for upload')
         self.add_argument('-n','--nproc',type=int,default=20,
                           help='number of parallel processes')
+        self.add_argument('-p','--paths',action='append',default=None,
+                          help='path to load image from')
 
 
 if __name__ == "__main__":

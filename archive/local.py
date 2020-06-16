@@ -28,6 +28,7 @@ LOCAL_PATHS = [
 
 # Preference should be given to fist entry
 BLISS_PATHS = [
+    '/data/des61.b/data/BLISS',
     '/data/des60.b/data/BLISS',
     '/data/des50.b/data/BLISS',
     ]
@@ -57,9 +58,8 @@ def get_nites(path=None):
     nite   = filename2nite(files)
     return np.rec.fromarrays([nite],names=['nite'])
                              
-def get_inventory(path=None):
-    if path: paths = [path] 
-    else: paths = LOCAL_PATHS
+def get_inventory(paths=None):
+    paths = np.atleast_1d(paths) if paths else LOCAL_PATHS
     files = []
     # TODO: multiprocessing?
     for p in paths:
@@ -77,11 +77,12 @@ def get_inventory(path=None):
     return np.rec.fromarrays([files, nite, expnum],
                              names=['filename','nite','expnum'])
 
-def get_path(expnum, nite=None):
+def get_path(expnum, nite=None, paths=None):
     if nite is None:
         nite = expnum2nite(expnum)
 
-    for arch in LOCAL_PATHS:
+    PATHS = np.atleast_1d(paths) if paths else LOCAL_PATHS
+    for arch in PATHS:
         filename = os.path.join(arch,DIRNAME,BASENAME)
         filename = filename.format(nite=nite,expnum=expnum)
         logging.debug("Looking for: %s"%filename)
@@ -95,17 +96,17 @@ def get_path(expnum, nite=None):
     msg = "Exposure not found locally: %s\n%s"%(expnum,filename)
     raise Exception(msg)
 
-def copy_exposure(expnum,outfile=None):
+def copy_exposure(expnum,outfile=None,paths=None):
     if not outfile: outfile = '.'
-    path = get_path(expnum)
+    path = get_path(expnum,paths=paths)
     cmd = 'cp {} {}'.format(path,outfile)
     logging.info(cmd)
     subprocess.check_call(cmd,shell=True)
     #shutil.copy(path,outfile)
     return outfile
 
-def link_exposure(expnum,outfile=None):
-    path = get_path(expnum)
+def link_exposure(expnum,outfile=None,paths=None):
+    path = get_path(expnum,paths=paths)
     if not outfile: 
         outfile = os.path.basename(path)
     cmd = 'ln -s {} {}'.format(path,outfile)
@@ -176,12 +177,13 @@ def read_image_headers(filepaths, multiproc=False):
 #    df = pd.DataFrame.from_records(headers)
 #    return df.to_records(index=False)
 
-def get_reduced_exposure_paths(multiproc=False):
+def get_reduced_exposure_paths(multiproc=False,paths=None):
     """ Get the paths to reduced exposures. """
     chunkdir = '[0-9]*00'
     expdir   = '[0-9]*[0-9]'
 
-    path = [os.path.join(p,chunkdir,expdir) for p in BLISS_PATHS]
+    PATHS = np.atleast_1d(paths) if paths else BLISS_PATHS
+    path = [os.path.join(p,chunkdir,expdir) for p in PATHS]
     if multiproc:
         p = Pool(processes=2, maxtasksperchild=10)
         filepaths = p.map(glob.glob,path)
@@ -201,7 +203,7 @@ def get_reduced_exposure_paths(multiproc=False):
     return inv[idx]
 
 def get_reduced_files(expnum=None, prefix='', suffix='immask.fits.fz',
-                      multiproc=False):
+                      multiproc=False, paths=None):
     """ 
     Get the path to reduced files matching the pattern:
       '%{prefix}D00[0-9]*{suffix}'
@@ -216,7 +218,7 @@ def get_reduced_files(expnum=None, prefix='', suffix='immask.fits.fz',
     --------
     files  : sorted array of filepaths
     """
-    inv = get_reduced_exposure_paths(multiproc=multiproc)
+    inv = get_reduced_exposure_paths(multiproc=multiproc,paths=paths)
 
     expnum = np.atleast_1d(expnum)
     if not (len(expnum)==0 or expnum[0]==None):
