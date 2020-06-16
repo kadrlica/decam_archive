@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Load an exposure into the database.
+Load exposure(s) into the database.
 """
 import os,sys
 import logging
