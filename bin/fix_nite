@@ -1,45 +1,49 @@
 #!/usr/bin/env python
 """
-Link an exposure in the local archive to the specified output directory.
+Move exposure(s) to the proper nite directory.
 """
-import os,sys
+import os
 import logging
 import argparse
 import subprocess
 import numpy as np
-import time
 import pandas as pd
 
-from archive.parser import VerboseAction, Parser
+from archive.parser import Parser
 from archive import BASEDIR,DIRNAME,BASENAME
 from archive import local
 from archive.sispi import SISPI
 
 def parser():
     parser = Parser(description=__doc__)
+    parser.add_argument('expnum',const=None,nargs='*',type=int,
+                        help='explicit exposures to load')
     parser.add_argument('--outdir',default=BASEDIR,
                         help='directory of local archive')
-    parser.add_argument('--logdir',nargs='?',default=None,const='.',
-                        help='directory for log files.')
     parser.add_argument('-c','--chunk',type=int,default=5000,
                         help='number of exposures per chunk')
-    parser.add_argument('-s','--sleep',type=float,default=0,
-                        help='time between submissions')
     return parser
 
 if __name__ == "__main__":
     args = parser().parse_args()
 
-    chunk = args.chunk
-    if chunk > 5e4:
-        msg = "'chunk' too large: %d"%chunk
+    chunk_size = args.chunk
+    if chunk_size > 5e4:
+        msg = "'chunk' too large: %d"%chunk_size
         raise OverflowError(msg)
-
     logging.info("Loading inventory...")
     inv = local.get_inventory(args.outdir)
+
+    if args.expnum:
+        logging.info("Selecting exposures...")
+        sel = np.in1d(inv['expnum'],np.atleast_1d(args.expnum))
+        inv = inv[sel]
+
     num = len(inv['expnum'])
 
     sispi = SISPI()
+
+    logging.info("Fixing nite...")
 
     i = 0
     count = 0
@@ -48,7 +52,7 @@ if __name__ == "__main__":
         info = '({:>{width}}/{}): '.format(i,num,width=len(str(num)))
         logging.info(info)
 
-        df_local = pd.DataFrame(inv[i:i+chunk])
+        df_local = pd.DataFrame(inv[i:i+chunk_size])
         df_sispi = pd.DataFrame(sispi.get_date(df_local['expnum']))
         df_merge = df_local.merge(df_sispi,on='expnum',
                                   suffixes=('_local','_sispi'))
@@ -72,5 +76,5 @@ if __name__ == "__main__":
                     if not os.path.exists(outdir):
                         os.makedirs(outdir)
                     subprocess.call(cmd,shell=True)
-
-        i += chunk
+            
+        i += chunk_size

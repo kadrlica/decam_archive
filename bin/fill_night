@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Get exposures released on a given nite.
+Fill the archive with exposures released on a given nite.
 """
 import os,sys
 import logging
@@ -15,6 +15,7 @@ from archive.parser import VerboseAction, Parser
 from archive.sispi import expnum2nite
 from archive import BASEDIR,DIRNAME,BASENAME
 from archive import local,noao,noir
+from archive.utils import mkdir
 
 def parser():
     parser = Parser(description=__doc__)
@@ -30,6 +31,8 @@ def parser():
                         help='number of simultaneous jobs')
     parser.add_argument('-q','--queue',default='vanilla',
                         help='queue to submit')
+    parser.add_argument('-p','--propid',default=None,action='append',
+                        help='propid to select')
     return parser
    
 
@@ -44,7 +47,7 @@ if __name__ == "__main__":
 
     logging.info("Release period: %s -- %s..."%(tstart,tstop))
 
-    query=noir.get_noir_query(tstart=tstart,tstop=tstop)
+    query=noir.get_noir_query(tstart=tstart,tstop=tstop,propid=args.propid)
 
     dirname = './table'
     if not os.path.exists(dirname): os.makedirs(dirname)
@@ -54,11 +57,12 @@ if __name__ == "__main__":
     data = np.load(table)
 
     logdir = args.logdir
-    if logdir and not os.path.exists(logdir): 
-        os.makedirs(logdir)
+    if logdir: mkdir(logdir)
 
-    inv = local.get_inventory(args.outdir)
+    # Get all exposures in the inventory
+    inv = local.get_inventory()
     sel = ~np.in1d(data['expnum'],inv['expnum'])
+    sel &= ~np.in1d(data['expnum'],noao.BLACKLIST)
     num = sel.sum()
 
     if not len(data):
@@ -82,9 +86,7 @@ if __name__ == "__main__":
             logging.info(msg)
             continue
 
-        outdir = os.path.dirname(outfile)
-        if not os.path.exists(outdir):
-            os.makedirs(outdir)
+        outdir = mkdir(os.path.dirname(outfile))
 
         # Build the command
         info = '({:>{width}}/{}): '.format(i,num,width=len(str(num)))
