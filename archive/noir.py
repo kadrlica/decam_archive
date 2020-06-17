@@ -31,7 +31,7 @@ def get_noir_query(**kwargs):
     """
     #filters=('u','g','r','i','z','Y'),
     defaults = dict(tstart=dateparse('2012-11-01'), tstop=date.today(),
-                    exptime=30, filter='')
+                    exptime=30)
 
     for k,v in defaults.items():
         kwargs.setdefault(k,v)
@@ -50,8 +50,8 @@ def get_noir_query(**kwargs):
         "obs_type",
         "release_date",
         "caldat",
-        "date_obs_min", # unnecessary?
-        "date_obs_max", # unnecessary?
+        #"date_obs_min", # unnecessary?
+        #"date_obs_max", # unnecessary?
         "proposal",
         "original_filename", 
         "archive_filename",  # unnecessary?
@@ -63,8 +63,7 @@ def get_noir_query(**kwargs):
         ["instrument", 'decam'],
         ["obs_type",'object'],
         ["proc_type",'raw'],
-        ["release_date", '{:%Y-%m-%d}'.format(kwargs['tstart']), '{:%Y-%m-%d}'.format(kwargs['tstop'])],
-        ["caldat", '2012-11-01', '{:%Y-%m-%d}'.format(date.today())],
+        ["caldat", '2012-11-01','{:%Y-%m-%d}'.format(date.today())],
         ['exposure', kwargs['exptime'], 10000],
     ]
 
@@ -78,10 +77,31 @@ def get_noir_query(**kwargs):
     if 'filter' in kwargs:
         ret['search'] += [['ifilter',kwargs['filter'],'startswith']]
 
+    # If propid specified, get all exposures with propid
+    # else, just grab released exposures
+    if 'propid' in kwargs:
+        ret['search'] += [['proposal',kwargs[propid]]]
+    else:
+        ret['search'] += ["release_date", 
+                          '{:%Y-%m-%d}'.format(kwargs['tstart']), 
+                          '{:%Y-%m-%d}'.format(kwargs['tstop'])],
+
+
     return ret
 
-def get_table(query=None, limit=250000, **kwargs):
-    """ Get the VOTable from NOAO. """
+def get_table(query=None, limit=500000, **kwargs):
+    """ Get the table from NOIR Lab. 
+
+    Parameters
+    ----------
+    query : dictionary with query parameters
+    limit : limit of exposure returned
+    kwargs: passed to generate the query
+
+    Returns
+    -------
+    table : pd.DataFrame
+    """
     url = URL + '/api/adv_search/fasearch/?'
 
     if query is None:
@@ -135,19 +155,12 @@ def get_token(email=None,password=None):
     return token
 
 def create_expnum(data):
-    """Convert original file name to exposure number"""
+    """Convert original file name to exposure number."""
     col = 'original_filename'
     if not len(data): return np.array([],dtype=int)
     return filename2expnum(data[col])
 
-def create_nite_safe(data):
-    """Convert 'date_obs' to nite. This is safer (using one
-    'date2nite' converter) but slower option."""
-    col = 'caldat'
-    if not len(data): return np.array([],dtype=int)
-    return date2nite(data[col])
-
-def create_nite_fast(data):
+def create_nite(data):
     """Convert 'caldat' to 'nite'. This is the faster option since
     it relies on NOAO to calculate the nite."""
     col = 'caldat'
@@ -157,13 +170,22 @@ def create_nite_fast(data):
     nite = np.char.replace(nite,'-','')
     return nite
 
-create_nite = create_nite_fast
-
 def tab2npy(table):
+    """ Convert table (pd.DataFrame) to numpy.recarray."""
     if isinstance(table, np.ndarray): return table
     return table.to_records(index=False)
 
 def load_table(table):
+    """ Load table from file and convert to recarray.
+
+    Parameters
+    ----------
+    table : filename, DataFrame, or recarray
+
+    Returns
+    -------
+    array : recarray
+    """
     if isinstance(table,basestring):
         base,ext = os.path.splitext(table)
         if ext in ('.npy'):
