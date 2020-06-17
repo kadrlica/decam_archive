@@ -13,16 +13,14 @@ def parser():
     parser.add_argument('expnum',type=int,help='Exposure number')
     parser.add_argument('outfile',nargs='?',help='Output file name')
     parser.add_argument('-a','--archive', default='all',
-                        choices=['local','desar2','noao','all'],
+                        choices=['local','desar2','noao','noir','all'],
                         help='source archive')
     parser.add_argument('-f','--force',action='store_true',
                         help='force overwrite')
     parser.add_argument('-l','--link',action='store_true',
                         help='link to local file')
-    parser.add_argument('--certificate',action='store_true',
-                        help='use NOAO SSL certificate (NOT IMPLEMENTED')
-    parser.add_argument('--votable',
-                        help='NOAO VOTable inventory.')
+    parser.add_argument('--table',
+                        help='Inventory of all exposures.')
     return parser
     
 
@@ -71,11 +69,22 @@ if __name__ == "__main__":
         if outfile and os.path.exists(outfile): 
             logging.info("Got file from desar2")
             sys.exit(0)
+    if args.archive in ('all','noir'):
+        try: 
+            from archive import noir
+            outfile = noir.download_exposure(args.expnum,args.outfile,
+                                             table=args.table)
+        except Exception, e:
+            logging.info(e)
+            logging.info("Failed to get file from NOIR Lab")
+        if outfile and os.path.exists(outfile): 
+            logging.info("Got file from NOIR Lab")
+            sys.exit(0)
     if args.archive in ('all','noao'):
         try: 
             from archive import noao
             outfile = noao.download_exposure(args.expnum,args.outfile,
-                                             votable=args.votable)
+                                             table=args.table)
         except Exception, e:
             logging.info(e)
             logging.info("Failed to get file from NOAO")

@@ -19,7 +19,7 @@ import numpy as np
 import numpy.lib.recfunctions as recfuncs
 import astropy.io.votable as vot
 
-from archive.utils import date2nite, filename2expnum
+from archive.utils import date2nite, filename2expnum, retry
 
 NOAO_URL = "http://archive.noao.edu/search/"
 NOAO_QUERY = """
@@ -256,19 +256,6 @@ def get_file_url(expnum,votable=None):
 
 get_path = get_file_url
 
-def retry(cmd, retry=25):
-    for i in range(retry):
-        try:
-            now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            logging.info("\n--%s-- Attempt %i..."%(now,i+1))
-            return subprocess.check_call(cmd,shell=True)
-        except Exception, e:
-            logging.warning(e)
-            sleep = i*30
-            logging.info("Sleeping %is..."%sleep)
-            time.sleep(sleep)
-    else:
-        raise Exception("Failed to execute command.")
 
 def download_exposure(expnum,outfile=None,votable=None,certificate=None):
     data = match_expnum(expnum,votable)
