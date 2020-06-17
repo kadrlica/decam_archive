@@ -13,7 +13,7 @@ import time
 from archive.parser import VerboseAction, Parser
 from archive.sispi import expnum2nite
 from archive import BASEDIR,DIRNAME,BASENAME
-from archive import local,noao
+from archive import local,noao,noir
 
 def parser():
     parser = Parser(description=__doc__)
@@ -23,40 +23,38 @@ def parser():
                         help='directory for log files.')
     parser.add_argument('--explist',
                         help='list of exposures to download')
-    parser.add_argument('--votable',
-                        help='NOAO inventory table')
+    parser.add_argument('--table',
+                        help='Exposure inventory table')
     parser.add_argument('-a','--archive', default='all',
-                        choices=['local','desar2','noao','all'],
+                        choices=['local','desar2','noao','noir','all'],
                         help='source archive')
     parser.add_argument('-s','--sleep',type=float,default=1,
                         help='time between submissions')
     parser.add_argument('--njobs',type=int,default=5,
                         help='number of simultaneous jobs')
+    parser.add_argument('-q','--queue',default='vanilla',
+                        help='queue to submit')
     return parser
    
 
 if __name__ == "__main__":
     args = parser().parse_args()
 
-    votable = args.votable
+    table = args.table
 
-    if not votable:
-        vodir = './votable'
-        if not os.path.exists(vodir): os.makedirs(vodir)
+    if not table:
+        dirname = './table'
+        if not os.path.exists(dirname): os.makedirs(dirname)
         today = datetime.date.today().strftime("%Y%m%d")
-        votable = os.path.join(vodir,'noao_monthly_%s.vot'%today)
+        table = os.path.join(dirname,'monthly_%s.npy'%today)
 
-    if not os.path.exists(votable):
-        logging.info("Downloading NOAO inventory...")
-        logging.info("Writing %s..."%votable)
-        noao.download_votable(votable)
-        npyfile = votable.replace('.vot','.npy')
-        logging.info("Writing %s..."%npyfile)
-        np.save(npyfile,noao.load_votable(votable))
-        votable = npyfile
+    if not os.path.exists(table):
+        logging.info("Downloading exposure inventory...")
+        logging.info("Writing %s..."%table)
+        noir.download_table(table)
 
     explist = args.explist
-    if not explist: explist = votable
+    if not explist: explist = table
 
     if explist.endswith('.vot'):
         data = noao.load_votable(explist)
@@ -98,9 +96,9 @@ if __name__ == "__main__":
 
         log = '-o %s '%os.path.join(logdir,'%s.log'%expnum) if logdir else ''
         njobs = '-n %s '%args.njobs if args.njobs else ''
-        sub = 'csub {njobs} {log}'.format(njobs=njobs,log=log)
+        sub = 'csub -q {queue} {njobs} {log}'.format(queue=args.queue,njobs=njobs,log=log)
         
-        cmd = 'get_exposure --link %s %s --votable %s'%(expnum,outfile,votable)
+        cmd = 'get_exposure --link %s %s --table %s'%(expnum,outfile,table)
 
         logging.info(info + sub + cmd)
         if not args.dryrun: subprocess.call(sub+cmd,shell=True)    
