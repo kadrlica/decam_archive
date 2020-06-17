@@ -38,7 +38,7 @@ STARTDATE=`date --date="$STARTDATE - 2 day"  +%Y%m%d`
 # Default with no propid specified
 fill_night --njobs 5 --date=$STARTDATE --outdir=$OUTDIR -v \
     --cert $SRCDIR/decam_archive/certificates/drlicawagnera-20190728.cert \
-    --propid="2020A-0908"
+#    --propid="2020A-0908"
 # To target one or more propids, uncomment the line above
 
 echo "Linking nite to $SRCDIR..."
