@@ -13,12 +13,8 @@ import time
 from archive.parser import VerboseAction, Parser
 from archive.sispi import expnum2nite
 from archive import BASEDIR,DIRNAME,BASENAME
-<<<<<<< HEAD
 from archive import local,noao,noir
-=======
-from archive import local,noao
 from archive.utils import mkdir
->>>>>>> master
 
 def parser():
     parser = Parser(description=__doc__)
@@ -28,17 +24,12 @@ def parser():
                         help='directory for log files.')
     parser.add_argument('--explist',
                         help='list of exposures to download')
-<<<<<<< HEAD
     parser.add_argument('--table',
                         help='Exposure inventory table')
-=======
-    parser.add_argument('--votable',
-                        help='NOAO inventory table')
     parser.add_argument('--tstart',default=None,type=int,
                         help="start date (i.e., '20110101')")
     parser.add_argument('--tstop',default=None,type=int,
                         help="stop date (i.e., '20200101')")
->>>>>>> master
     parser.add_argument('-a','--archive', default='all',
                         choices=['local','desar2','noao','noir','all'],
                         help='source archive')
@@ -46,13 +37,8 @@ def parser():
                         help='time between submissions')
     parser.add_argument('--njobs',type=int,default=5,
                         help='number of simultaneous jobs')
-<<<<<<< HEAD
     parser.add_argument('-q','--queue',default='vanilla',
                         help='queue to submit')
-=======
-    parser.add_argument('-c','--cert',default=None,
-                        help='path to certificate')
->>>>>>> master
     return parser
    
 
@@ -61,46 +47,29 @@ if __name__ == "__main__":
 
     table = args.table
 
-<<<<<<< HEAD
     if not table:
-        dirname = './table'
-        if not os.path.exists(dirname): os.makedirs(dirname)
-=======
-    if not votable:
-        vodir = mkdir('./votable')
->>>>>>> master
+        dirname = mkdir('./table')
         today = datetime.date.today().strftime("%Y%m%d")
         table = os.path.join(dirname,'monthly_%s.npy'%today)
 
-<<<<<<< HEAD
     if not os.path.exists(table):
         logging.info("Downloading exposure inventory...")
         logging.info("Writing %s..."%table)
         noir.download_table(table)
-=======
-    if not os.path.exists(votable):
-        logging.info("Downloading NOAO inventory...")
-        logging.info("Writing %s..."%votable)
-        noao.download_votable(votable)
-        npyfile = votable.replace('.vot','.npy')
-        logging.info("Writing %s..."%npyfile)
-        np.save(npyfile,noao.load_votable(votable))
-        votable = npyfile
     else:
-        logging.info("Using existing votable: %s"%votable)
->>>>>>> master
+        logging.info("Using existing table: %s"%table)
 
     explist = args.explist
     if not explist: explist = table
 
-    if explist.endswith('.vot'):
-        data = noao.load_votable(explist)
-    elif explist.endswith('.npy'):
+    if explist.endswith('.npy'):
         data = np.load(explist)
     elif explist.endswith('.csv'):
         data = np.recfromcsv(explist)
     elif explist.endswith(('.txt','.dat')):
         data = np.recfromtxt(explist)
+    elif explist.endswith('.vot'):
+        data = noao.load_votable(explist)
     else:
         msg = "Unrecognized file type: %s"%(os.path.splitext(extlist)[-1])
         raise ValueError(msg)
@@ -135,21 +104,11 @@ if __name__ == "__main__":
         # Build the command
         info = '({:>{width}}/{}): '.format(i+1,num,width=len(str(num)))
 
-<<<<<<< HEAD
         log = '-o %s '%os.path.join(logdir,'%s.log'%expnum) if logdir else ''
         njobs = '-n %s '%args.njobs if args.njobs else ''
         sub = 'csub -q {queue} {njobs} {log}'.format(queue=args.queue,njobs=njobs,log=log)
         
         cmd = 'get_exposure --link %s %s --table %s'%(expnum,outfile,table)
-=======
-
-        log = '-o %s'%os.path.join(logdir,'%s.log'%expnum) if logdir else ''
-        njobs = '-n %s'%args.njobs if args.njobs else ''
-        sub = 'csub {njobs} {log} '.format(njobs=njobs,log=log)
-        certificate = '--cert %s'%args.cert if args.cert else ''        
-        cmd = 'get_exposure --link %s %s --votable %s %s'%(expnum,outfile,votable,
-                                                        certificate)
->>>>>>> master
 
         logging.info(info + sub + cmd)
         if not args.dryrun: subprocess.call(sub+cmd,shell=True)    
