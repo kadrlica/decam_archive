@@ -37,7 +37,7 @@ export PATH=/home/s1/kadrlica/bin:$PATH # for csub
 STARTDATE=`date --date="$STARTDATE - 2 day"  +%Y%m%d`
 # Default with no propid specified
 fill_night --njobs 5 --date=$STARTDATE --outdir=$OUTDIR -v \
-#    --propid="2020A-0908"
+#     --propid="2019A-0272"
 # To target one or more propids, uncomment the line above
 
 echo "Linking nite to $SRCDIR..."

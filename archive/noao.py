@@ -19,7 +19,8 @@ import numpy as np
 import numpy.lib.recfunctions as recfuncs
 import astropy.io.votable as vot
 
-from archive.utils import date2nite, filename2expnum, retry, get_datadir
+from archive.utils import date2nite, filename2expnum, retry
+from archive.utils import get_datadir,get_datafile
 
 #NOAO_URL = "http://archive.noao.edu/search/"
 #--AND (start_date >= '2012-11-01') -- Start of SV
@@ -60,33 +61,10 @@ CERTDIR='/data/des51.b/data/DTS/src/decam_archive/certificates'
 NOAO_CERT = os.path.join(CERTDIR,'drlicawagnera-20200130.cert')
 
 # Corrupted or otherwise bad exposures that shouldn't be downloaded
-BLACKLIST = np.loadtxt(os.path.join(get_datadir(),'blacklist.txt'))
+BLACKLIST = np.loadtxt(get_datafile('blacklist.txt'))
 
 # My propids
-PROPIDS = (
-    #'2016A-0196', # SOAR RR Lyrae (Kathy)
-    '2016A-0366', # MagLiteS-I
-    #'2016B-0140', # SOAR RR Lyrae (Kathy)
-    '2017A-0260', # BLISS-I
-    '2017A-0388', # DERosita (Alfredo)
-    '2017A-0913', # Luidhy
-    '2018A-0242', # MagLiteS-II
-    '2018A-0273', # PALS
-    '2018A-0386', # DERosita (Alfredo)
-    '2018A-0914', # BLINK
-    '2019A-0240', # IceCube
-    '2019A-0272', # DeRosita (Alfredo)
-    '2019A-0305', # DELVE
-    '2019B-0323', # DeRosita (Alfredo)
-    '2019A-0235', # DES GW
-    '2019B-0353', # Andreoni GW
-    '2019B-0371', # Soares-Santos GW
-    '2019B-0372', # Soares-Santos GW
-    '2019B-1014', # Felipe Olivares
-    '2020A-0399', # DeRositas (Alfredo)
-    '2020A-0908', # Felipe Olivares
-    '2020A-0238', # RRL (Martinez-Vazquez)
-    )
+PROPIDS = np.loadtxt(get_datafile('propid.txt'),dtype=str)
 
 def get_noao_query(**kwargs):
     kwargs = get_noao_query_kwargs(**kwargs)

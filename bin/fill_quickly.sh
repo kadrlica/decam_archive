@@ -40,8 +40,9 @@ retrieve-too-data.sh -n ${STARTDATE}
 
 # Don't move back an additional day
 #STARTDATE=`date --date="$STARTDATE - 1 day"  +%Y%m%d`
-#fill_night --njobs 5 --date=$STARTDATE --outdir=$OUTDIR -v
-fill_night --njobs 5 --date=$STARTDATE --outdir=$OUTDIR -v --propid="2019A-0235"
+fill_night --njobs 5 --date=$STARTDATE --outdir=$OUTDIR -v
+
+#fill_night --njobs 5 --date=$STARTDATE --outdir=$OUTDIR -v --propid="2019A-0235"
 #fill_night --njobs 5 --date=$STARTDATE --outdir=$OUTDIR -v \
 #    --propid="2018A-0242" --propid="2019A-0272" \
 #    --cert $SRCDIR/decam_archive/certificates/drlicawagnera-20190728.cert

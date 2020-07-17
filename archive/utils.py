@@ -92,6 +92,9 @@ def get_datadir():
     from os.path import dirname, abspath
     return os.path.join(dirname(abspath(__file__)),'data')
 
+def get_datafile(filename):
+    return os.path.join(get_datadir(),filename)
+
 def filename2nite(filename):
     """Convert filename to exposure number.
     

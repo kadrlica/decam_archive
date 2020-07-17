@@ -35,6 +35,7 @@ def get_query(**kwargs):
     for k,v in defaults.items():
         kwargs.setdefault(k,v)
 
+    # release date
     kwargs['tstart'] = dateparse(str(kwargs['tstart']))
     kwargs['tstop']  = dateparse(str(kwargs['tstop']))
 
@@ -80,7 +81,7 @@ def get_query(**kwargs):
 
     # If propid specified, get all exposures with propid
     # else, just grab released exposures
-    if 'propid' in kwargs:
+    if kwargs.get('propid',None):
         ret['search'] += [['proposal',kwargs['propid'],'exact']]
         # This should work, but it doesn't yet
         #regex = '^(%s)'%('|'.join(np.atleast_1d(kwargs['propid'])))
@@ -116,6 +117,8 @@ def get_table(query=None, limit=500000, **kwargs):
         url += 'limit={:d}'.format(limit)
 
     logging.info("Downloading table...")
+    logging.debug(url)
+    logging.debug(query)
     ret = requests.post(url,json=query)
     table = pd.read_json(json.dumps(ret.json()))
 
