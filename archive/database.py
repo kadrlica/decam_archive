@@ -71,6 +71,30 @@ def desc2dtype(desc):
             raise TypeError(msg)
         dtype.append(dt)
     return dtype
+
+def get_desservices(filename=None, section='db-fnal'):
+    #if not filename: filename=os.getenv("DES_SERVICES")
+    if os.path.exists(".desservices.ini"):
+        filename=os.path.expandvars("$PWD/.desservices.ini")
+    else:
+        filename=os.path.expandvars("$HOME/.desservices.ini")
+    logging.debug('Connecting with credentials in %s'%filename)
+ 
+    # ConfigParser throws "no section error" if file does not exist...
+    # That's confusing, so 'open' to get a more understandable error
+    open(filename) 
+
+    import ConfigParser
+    c = ConfigParser.RawConfigParser()
+    c.read(filename)
+ 
+    d={}
+    d['host']     = c.get(section,'server')
+    d['dbname']   = c.get(section,'name')
+    d['user']     = c.get(section,'user')
+    d['password'] = c.get(section,'passwd')
+    d['port']     = c.get(section,'port')
+    return d
             
 class Database(object):
     def __init__(self,dbname='db-fnal'):
@@ -84,27 +108,7 @@ class Database(object):
         return ret
 
     def parse_config(self, filename=None, section='db-fnal'):
-        #if not filename: filename=os.getenv("DES_SERVICES")
-        if os.path.exists(".desservices.ini"):
-            filename=os.path.expandvars("$PWD/.desservices.ini")
-        else:
-            filename=os.path.expandvars("$HOME/.desservices.ini")
-        logging.debug('Connecting with credentials in %s'%filename)
-
-        # ConfigParser throws "no section error" if file does not exist...
-        # That's confusing, so 'open' to get a more understandable error
-        open(filename) 
-        import ConfigParser
-        c = ConfigParser.RawConfigParser()
-        c.read(filename)
-
-        d={}
-        d['host']     = c.get(section,'server')
-        d['dbname']   = c.get(section,'name')
-        d['user']     = c.get(section,'user')
-        d['password'] = c.get(section,'passwd')
-        d['port']     = c.get(section,'port')
-        return d
+        return get_desservices(filename,section)
 
     def connect(self):
         self.connection = psycopg2.connect(**self.conninfo)

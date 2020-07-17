@@ -7,6 +7,7 @@ __author__ = "Alex Drlica-Wagner"
 import os.path
 from datetime import timedelta
 import warnings
+import logging
 import errno    
 
 import numpy as np
@@ -91,6 +92,9 @@ def get_datadir():
     from os.path import dirname, abspath
     return os.path.join(dirname(abspath(__file__)),'data')
 
+def get_datafile(filename):
+    return os.path.join(get_datadir(),filename)
+
 def filename2nite(filename):
     """Convert filename to exposure number.
     
@@ -151,6 +155,20 @@ def ang2pix(nside, lon, lat):
     theta = np.radians(90. - lat)
     phi = np.radians(lon)
     return hp.ang2pix(nside, theta, phi)
+
+def retry(cmd, retry=25):
+    for i in range(retry):
+        try:
+            now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            logging.info("\n--%s-- Attempt %i..."%(now,i+1))
+            return subprocess.check_call(cmd,shell=True)
+        except Exception, e:
+            logging.warning(e)
+            sleep = i*30
+            logging.info("Sleeping %is..."%sleep)
+            time.sleep(sleep)
+    else:
+        raise Exception("Failed to execute command.")
 
 def mkdir(path):
     # https://stackoverflow.com/a/600612/4075339

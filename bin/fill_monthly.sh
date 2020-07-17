@@ -21,6 +21,7 @@ export PATH=/home/s1/kadrlica/bin:$PATH # for csub
 
 #echo "Pruning archive..."
 #prune_archive --outdir=$SRCDIR
+
 echo "Filling archive..."
 fill_archive -v --njobs 5 --outdir=$OUTDIR
 
