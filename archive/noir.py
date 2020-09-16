@@ -120,7 +120,10 @@ def get_table(query=None, limit=500000, **kwargs):
     logging.debug(url)
     logging.debug(query)
     ret = requests.post(url,json=query)
-    table = pd.read_json(json.dumps(ret.json()))
+    data = ret.json()
+
+    metadata = data[0]
+    table = pd.read_json(json.dumps(data[1:]))
 
     table.rename(columns=MAPPING,inplace=True)
 
