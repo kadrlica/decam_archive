@@ -3,10 +3,12 @@
 umask 002
 
 date
-echo "Preparing to prune and fill archive..."
+echo "Preparing to fill archive..."
 
 SRCDIR=/data/des51.b/data/DTS/src/
-cd $SRCDIR
+OUTDIR=$SRCDIR
+
+cd $OUTDIR
 
 export PATH=/cvmfs/des.opensciencegrid.org/fnal/anaconda2/envs/default/bin:$PATH
 
@@ -17,11 +19,27 @@ export PYTHONPATH=$DECAM_ARCHIVE:$PYTHONPATH
 export PATH=$DECAM_ARCHIVE/bin:$PATH
 export PATH=/home/s1/kadrlica/bin:$PATH # for csub
 
-prune_archive --outdir=$SRCDIR
-fill_archive --njobs 5 --outdir=$SRCDIR
-prune_archive --outdir=$SRCDIR
+#echo "Pruning archive..."
+#prune_archive --outdir=$SRCDIR
 
-# Load the exposure table
+echo "Filling archive..."
+fill_archive -v --njobs 5 --outdir=$OUTDIR
+
+## The `csub -n 5` delays subsequent jobs until fill_archive is done
+ 
+# The DESDM exposures are not always in the right nite
+echo "Fixing nite..."
+csub -o log/cron_fix_nite.log -n 5 fix_nite -v --outdir=$SRCDIR
+
+# We may have downloaded some bad exposures
+#echo "Pruning archive again..."
+#csub -o log/cron_prune_archive.log -n 5 prune_archive --outdir=$SRCDIR
+
+# Link back to the main directory
+echo "Linking nite to $SRCDIR..."
+link_archive --njobs 5 --indir $OUTDIR --outdir $SRCDIR
+ 
+## Load the exposure table
 echo "Submitting load_exposure_table..."
 csub -o log/cron_load_exposure.log -n 5 load_exposure_table
 

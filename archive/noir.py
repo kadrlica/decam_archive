@@ -25,17 +25,17 @@ MAPPING = {'ra_min':'ra',
            'ifilter':'filter',
            }
     
-def get_noir_query(**kwargs):
+def get_query(**kwargs):
     """
     Get the NOIR Lab download query dictionary.
     """
-    #filters=('u','g','r','i','z','Y'),
     defaults = dict(tstart=dateparse('2012-11-01'), tstop=date.today(),
-                    exptime=30, filter='')
+                    exptime=30,filters=('g','r','i','z','Y'))
 
     for k,v in defaults.items():
         kwargs.setdefault(k,v)
 
+    # release date
     kwargs['tstart'] = dateparse(str(kwargs['tstart']))
     kwargs['tstop']  = dateparse(str(kwargs['tstop']))
 
@@ -46,15 +46,16 @@ def get_noir_query(**kwargs):
         "ra_min",
         "dec_min",
         "ifilter",
+        "exposure",
         "proc_type",
         "obs_type",
         "release_date",
-        "caldat",
-        "date_obs_min", # unnecessary?
-        "date_obs_max", # unnecessary?
+        "caldat", # needed for nite
+        #"date_obs_min", # unnecessary?
+        #"date_obs_max", # unnecessary?
         "proposal",
-        "original_filename", 
-        "archive_filename",  # unnecessary?
+        "original_filename",  # needed for expnum
+        #"archive_filename",  # unnecessary?
         "filesize",
         ]
 
@@ -63,9 +64,8 @@ def get_noir_query(**kwargs):
         ["instrument", 'decam'],
         ["obs_type",'object'],
         ["proc_type",'raw'],
-        ["release_date", '{:%Y-%m-%d}'.format(kwargs['tstart']), '{:%Y-%m-%d}'.format(kwargs['tstop'])],
-        ["caldat", '2012-11-01', '{:%Y-%m-%d}'.format(date.today())],
-        ['exposure', kwargs['exptime'], 10000],
+        ["caldat", '2012-11-01','{:%Y-%m-%d}'.format(date.today())],
+        ["exposure", kwargs['exptime'], 10000]
     ]
 
     if 'expnum' in kwargs:
@@ -75,34 +75,64 @@ def get_noir_query(**kwargs):
             filename = 'DECam_{}.fits.fz'.format(kwargs['expnum'])
         ret['search'] += [["original_filename",filename,'endswith']]
 
-    if 'filter' in kwargs:
-        ret['search'] += [['ifilter',kwargs['filter'],'startswith']]
+    if 'filters' in kwargs:
+        regex = '^(%s)'%('|'.join(kwargs['filters']))
+        ret['search'] += [['ifilter',regex,'regex']]
+
+    # If propid specified, get all exposures with propid
+    # else, just grab released exposures
+    if kwargs.get('propid',None):
+        ret['search'] += [['proposal',kwargs['propid'],'exact']]
+        # This should work, but it doesn't yet
+        #regex = '^(%s)'%('|'.join(np.atleast_1d(kwargs['propid'])))
+        #ret['search'] += [['proposal',regex,'regex']]
+    else:
+        ret['search'] += [
+            ["release_date", 
+             '{:%Y-%m-%d}'.format(kwargs['tstart']), 
+             '{:%Y-%m-%d}'.format(kwargs['tstop'])],
+            ]
 
     return ret
 
-def get_table(query=None, limit=250000, **kwargs):
-    """ Get the VOTable from NOAO. """
+def get_table(query=None, limit=500000, **kwargs):
+    """ Get the table from NOIR Lab. 
+
+    Parameters
+    ----------
+    query : dictionary with query parameters
+    limit : limit of exposure returned
+    kwargs: passed to generate the query
+
+    Returns
+    -------
+    table : pd.DataFrame
+    """
     url = URL + '/api/adv_search/fasearch/?'
 
     if query is None:
-        query = get_noir_query(**kwargs)
+        query = get_query(**kwargs)
 
     if limit is not None:
         url += 'limit={:d}'.format(limit)
 
     logging.info("Downloading table...")
+    logging.debug(url)
+    logging.debug(query)
     ret = requests.post(url,json=query)
     data = ret.json()
 
     metadata = data[0]
     table = pd.read_json(json.dumps(data[1:]))
 
-    table.rename(MAPPING,inplace=True)
+    table.rename(columns=MAPPING,inplace=True)
 
     expnum = create_expnum(table)
     nite = create_nite(table)
     table['expnum'] = expnum
     table['nite'] = nite
+    
+    table.sort_values('expnum',inplace=True)
 
     return table
 
@@ -138,19 +168,12 @@ def get_token(email=None,password=None):
     return token
 
 def create_expnum(data):
-    """Convert original file name to exposure number"""
+    """Convert original file name to exposure number."""
     col = 'original_filename'
     if not len(data): return np.array([],dtype=int)
     return filename2expnum(data[col])
 
-def create_nite_safe(data):
-    """Convert 'date_obs' to nite. This is safer (using one
-    'date2nite' converter) but slower option."""
-    col = 'caldat'
-    if not len(data): return np.array([],dtype=int)
-    return date2nite(data[col])
-
-def create_nite_fast(data):
+def create_nite(data):
     """Convert 'caldat' to 'nite'. This is the faster option since
     it relies on NOAO to calculate the nite."""
     col = 'caldat'
@@ -160,13 +183,22 @@ def create_nite_fast(data):
     nite = np.char.replace(nite,'-','')
     return nite
 
-create_nite = create_nite_fast
-
 def tab2npy(table):
+    """ Convert table (pd.DataFrame) to numpy.recarray."""
     if isinstance(table, np.ndarray): return table
     return table.to_records(index=False)
 
 def load_table(table):
+    """ Load table from file and convert to recarray.
+
+    Parameters
+    ----------
+    table : filename, DataFrame, or recarray
+
+    Returns
+    -------
+    array : recarray
+    """
     if isinstance(table,basestring):
         base,ext = os.path.splitext(table)
         if ext in ('.npy'):
@@ -180,6 +212,7 @@ def download_table(outfile, query=None, **kwargs):
     base,ext = os.path.splitext(outfile)
 
     table = get_table(query,**kwargs)
+    logging.debug('Writing table to %s...'%outfile)
     if ext == '.npy':
         np.save(outfile,tab2npy(table))
     elif ext == '.csv':
@@ -190,14 +223,17 @@ def download_table(outfile, query=None, **kwargs):
     return outfile
 
 def match_expnum(expnum,table=None):
-    if not table: 
+    if table is None: 
         table = get_table(expnum=expnum)
 
     data = load_table(table)
     
     match = np.where(data['expnum'] == expnum)[0]
-    if len(match) == 0 or len(match) > 1:
-        msg = "No unique match to exposure: %s"%expnum
+    if len(match) == 0:
+        msg = "No match to exposure: %s"%expnum
+        raise Exception(msg)
+    elif  len(match) > 1:
+        msg = "Multiple matches to exposure: %s"%expnum
         raise Exception(msg)
 
     return data[match[0]]
@@ -235,9 +271,9 @@ def download_exposure(expnum,outfile=None,table=None,token=None):
                 dl += len(data)
                 f.write(data)
                 done = int(50 * dl / total_length)
-                sys.stdout.write("\r[%s%s]" % ('=' * done, ' ' * (50-done)) )    
-                sys.stdout.flush()         
-            sys.stdout.write('\n')
+                sys.stdout.write("\r[%s%s]" % ('=' * done, ' ' * (50-done)) )
+                sys.stdout.flush()
+    logging.info("Done")
 
     if r.status_code == 200:
         filesize = os.path.getsize(outfile)
@@ -257,17 +293,16 @@ def download_exposure(expnum,outfile=None,table=None,token=None):
 
 copy_exposure = download_exposure
 
-
 if __name__ == "__main__":
     from parser import Parser
     description = "Interface to NOIR lab data archive"
     parser = Parser(description=description)
     args = parser.parse_args()
 
-    #table = 'table.csv'
-    #query = get_noir_query()
-    #print(query)
-    #print(download_table(table,get_noir_query()))
+    table = 'table.csv'
+    query = get_query()
+    print(query)
+    print(download_table(table,get_noir_query()))
     
     expnum = 797795
     #print(match_expnum(expnum,table)['url'])

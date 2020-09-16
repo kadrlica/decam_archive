@@ -22,6 +22,7 @@ from archive.interruptible_pool import InterruptiblePool as Pool
 LOCAL_PATHS = [
     '/data/des30.b/data/DTS/src',
     '/data/des40.b/data/DTS/src',
+    '/data/des41.b/data/DTS/src',
     '/data/des51.b/data/DTS/src'
     ]
 
@@ -45,7 +46,18 @@ FILE_TYPES = odict([
         ('allzp',  dict(prefix='Merg_allZP_',suffix='.csv')),
         ])
 
-
+def get_nites(path=None):
+    if path: paths = [path]
+    else: paths = LOCAL_PATHS
+    files = []
+    for p in paths:
+        files += glob.glob(p+'/[0-9]*[0-9]/')
+        files += glob.glob(p+'/[0-9]*[0-9]/')
+    files = np.atleast_1d(files)
+    files.sort()
+    nite   = filename2nite(files)
+    return np.rec.fromarrays([nite],names=['nite'])
+                             
 def get_inventory(paths=None):
     paths = np.atleast_1d(paths) if paths else LOCAL_PATHS
     files = []
@@ -418,7 +430,6 @@ def parse_reduced_file(filename,out=None):
     if scalar:
         return out[0]
     return out
-
 
 if __name__ == "__main__":
     import argparse
