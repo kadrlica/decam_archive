@@ -30,7 +30,7 @@ def get_query(**kwargs):
     Get the NOIR Lab download query dictionary.
     """
     defaults = dict(tstart=dateparse('2012-11-01'), tstop=date.today(),
-                    exptime=30,filters=('g','r','i','z','Y'))
+                    exptime=30,filters=('u','g','r','i','z','Y'))
 
     for k,v in defaults.items():
         kwargs.setdefault(k,v)
@@ -131,9 +131,21 @@ def get_table(query=None, limit=500000, **kwargs):
     nite = create_nite(table)
     table['expnum'] = expnum
     table['nite'] = nite
-    
-    table.sort_values('expnum',inplace=True)
 
+    # Could be useful...
+    #url  = create_url(table)
+    #table['url']  = url
+
+    # Shouldn't be necessary, but it is on 2020-09-17...
+    uid,idx,cts = np.unique(table['expnum'],return_counts=True,return_index=True)
+
+    if np.any(cts > 1):
+        logging.warning("Found %s duplicate exposures"%(cts>1).sum())
+
+    table = table.iloc[idx]
+
+    #table.sort_values('expnum',inplace=True)
+    
     return table
 
 def get_token(email=None,password=None):
@@ -182,6 +194,13 @@ def create_nite(data):
     nite = data[col].values.astype(dtype)
     nite = np.char.replace(nite,'-','')
     return nite
+
+def create_url(data):
+    """URL for file download"""
+    col = 'md5sum'
+    if not len(data): return np.array([],dtype=str)
+    url = URL + '/api/retrieve/' + data[col]
+    return url
 
 def tab2npy(table):
     """ Convert table (pd.DataFrame) to numpy.recarray."""
@@ -245,8 +264,7 @@ def get_file_url(expnum,table=None):
 get_path = get_file_url
 
 def download_exposure(expnum,outfile=None,table=None,token=None):
-    data = match_expnum(expnum,table)
-    path = data['url']
+    data     = match_expnum(expnum,table)
     origsize = data['filesize']
 
     if not outfile:
@@ -254,12 +272,12 @@ def download_exposure(expnum,outfile=None,table=None,token=None):
 
     if not token: 
         token = get_token()
-
     
     headers = dict(Authorization=token)
     with open(outfile, 'wb') as f:
         logging.info("Downloading %s..."%outfile)
-        r = requests.get(data['url'],headers=headers,stream=True)
+        url = create_url(data)
+        r = requests.get(url,headers=headers,stream=True)
         total_length = r.headers.get('content-length')
 
         if total_length is None: # no content length header
@@ -280,6 +298,10 @@ def download_exposure(expnum,outfile=None,table=None,token=None):
         msg = "{} [{:.1f} MB]".format(outfile,filesize//1024**2)
         logging.info(msg)
     else:
+        if os.path.exists(outfile):
+            msg = "Removing failed download: {}".format(outfile)
+            logging.warn(msg)
+            os.remove(outfile)
         raise Exception(r.json()['message'])
 
     # Check the file size (might be unnecessary with wget)

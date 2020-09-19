@@ -48,7 +48,7 @@ if __name__ == "__main__":
     query=noir.get_query(tstart=tstart,tstop=tstop,propid=args.propid)
 
     dirname = mkdir('./table')
-    table = os.path.join(dirname,'nightly_%s.npy'%tstart)
+    table = os.path.join(dirname,'night_%s.npy'%tstart)
     logging.info("Creating %s..."%table)
     noir.download_table(table,query=query)
     data = np.load(table)

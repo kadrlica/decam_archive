@@ -25,11 +25,11 @@ export PATH=/home/s1/kadrlica/bin:$PATH # for csub
 echo "Filling archive..."
 fill_archive -v --njobs 5 --outdir=$OUTDIR
 
-## The `csub -n 5` delays subsequent jobs until fill_archive is done
+## The `-n 1` argument delays subsequent jobs until fill_archive is done
  
 # The DESDM exposures are not always in the right nite
 echo "Fixing nite..."
-csub -o log/cron_fix_nite.log -n 5 fix_nite -v --outdir=$SRCDIR
+csub -o log/cron_fix_nite.log -n 1 fix_nite -v --outdir=$SRCDIR
 
 # We may have downloaded some bad exposures
 #echo "Pruning archive again..."
@@ -37,10 +37,10 @@ csub -o log/cron_fix_nite.log -n 5 fix_nite -v --outdir=$SRCDIR
 
 # Link back to the main directory
 echo "Linking nite to $SRCDIR..."
-link_archive --njobs 5 --indir $OUTDIR --outdir $SRCDIR
+link_archive --njobs 1 --indir $OUTDIR --outdir $SRCDIR
  
 ## Load the exposure table
 echo "Submitting load_exposure_table..."
-csub -o log/cron_load_exposure.log -n 5 load_exposure_table
+csub -o log/cron_load_exposure.log -n 1 load_exposure_table
 
 exit

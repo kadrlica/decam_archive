@@ -50,7 +50,7 @@ if __name__ == "__main__":
     if not table:
         dirname = mkdir('./table')
         today = datetime.date.today().strftime("%Y%m%d")
-        table = os.path.join(dirname,'monthly_%s.npy'%today)
+        table = os.path.join(dirname,'archive_%s.npy'%today)
 
     if not os.path.exists(table):
         logging.info("Downloading exposure inventory...")
