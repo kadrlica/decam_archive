@@ -1,0 +1,28 @@
+#2016A-0196 # SOAR RR Lyrae (Kathy)
+2016A-0366 # MagLiteS-I
+#2016B-0140 # SOAR RR Lyrae (Kathy)
+2017A-0260 # BLISS-I
+2017A-0388 # DERosita (Alfredo)
+2017A-0913 # Luidhy
+2018A-0242 # MagLiteS-II
+2018A-0273 # PALS
+2018A-0386 # DERosita (Alfredo)
+2018A-0914 # BLINK
+2019A-0240 # IceCube
+2019A-0272 # DeRosita (Alfredo)
+2019A-0235 # DES GW
+2019A-0305 # DELVE
+2019B-0323 # DeRosita (Alfredo)
+2019B-0353 # Andreoni GW
+2019B-0371 # Soares-Santos GW
+2019B-0372 # Soares-Santos GW
+2019B-1014 # Felipe Olivares
+2020A-0399 # DeRositas (Alfredo)
+2020A-0908 # Felipe Olivares
+2020A-0238 # RRL (Martinez-Vazquez)
+2020B-0241 # DeRositas
+2020B-0282 # Icecube
+2020B-0053 # SN1a (Dillon Brout)
+2021A-0246 # Icecube (Morgan)
+2021A-0275 # (Rest)
+2021A-0149 # DeROSITAS (Zenteno)
