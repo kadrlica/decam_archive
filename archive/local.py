@@ -28,6 +28,7 @@ LOCAL_PATHS = [
 
 # Preference should be given to fist entry
 BLISS_PATHS = [
+    '/data/des71.c/data/BLISS',
     '/data/des61.b/data/BLISS',
     '/data/des60.b/data/BLISS',
     '/data/des50.b/data/BLISS',
@@ -116,7 +117,10 @@ def link_exposure(expnum,outfile=None,paths=None):
     return outfile
 
 def read_header(kwargs):
-    """Wrapper around fitsio.read_header to work with Pool.map"""
+    """Wrapper around fitsio.read_header to work with Pool.map
+
+    This raises an Exception if fails to read header.
+    """
     # Only compatible with python 2
     # https://stackoverflow.com/a/6062799/4075339
     try:
@@ -206,7 +210,7 @@ def get_reduced_files(expnum=None, prefix='', suffix='immask.fits.fz',
                       multiproc=False, paths=None):
     """ 
     Get the path to reduced files matching the pattern:
-      '%{prefix}D00[0-9]*{suffix}'
+      '%{prefix}D0[0-1][0-9]*{suffix}'
 
     Parameters:
     -----------
@@ -234,7 +238,7 @@ def get_reduced_files(expnum=None, prefix='', suffix='immask.fits.fz',
         expnum = inv['expnum']
         expdir = inv['filepath']
 
-    regex = '%sD00[0-9]*%s'%(prefix,suffix)
+    regex = '%sD0[0-1][0-9]*%s'%(prefix,suffix)
     path = np.char.add(expdir,'/'+regex)
 
     args = zip(range(len(expdir)),expdir)
