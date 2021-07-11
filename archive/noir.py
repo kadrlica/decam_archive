@@ -2,7 +2,7 @@
 """
 Interface to NOIRLab data archive.
 
-https://astroarchive.noao.edu
+https://astroarchive.noirlab.edu
 """
 __author__ = "Alex Drlica-Wagner"
 import os,sys
@@ -11,6 +11,7 @@ import requests
 from datetime import date, datetime, timedelta
 from dateutil.parser import parse as dateparse
 import warnings
+import hashlib
 
 import numpy as np
 import pandas as pd
@@ -19,25 +20,24 @@ import json
 from archive.utils import date2nite, filename2expnum
 from archive.database import get_desservices
 
-URL = "https://astroarchive.noao.edu"
+URL = "https://astroarchive.noirlab.edu"
 MAPPING = {'ra_min':'ra',
            'dec_min':'dec',
            'ifilter':'filter',
            }
-    
+# Sometimes the NOIRLab certificate expires... 
+VERIFY=True
+#VERIFY=False # only for gangstars...
+
 def get_query(**kwargs):
     """
     Get the NOIR Lab download query dictionary.
     """
-    defaults = dict(tstart=dateparse('2012-11-01'), tstop=date.today(),
+    defaults = dict(tstart=dateparse('2012-11-01'), tstop=None,
                     exptime=30,filters=('u','g','r','i','z','Y'))
 
     for k,v in defaults.items():
         kwargs.setdefault(k,v)
-
-    # release date
-    kwargs['tstart'] = dateparse(str(kwargs['tstart']))
-    kwargs['tstop']  = dateparse(str(kwargs['tstop']))
 
     ret = dict()
     # Output fields
@@ -51,6 +51,7 @@ def get_query(**kwargs):
         "obs_type",
         "release_date",
         "caldat", # needed for nite
+        #"url", 
         #"date_obs_min", # unnecessary?
         #"date_obs_max", # unnecessary?
         "proposal",
@@ -80,13 +81,17 @@ def get_query(**kwargs):
         ret['search'] += [['ifilter',regex,'regex']]
 
     # If propid specified, get all exposures with propid
-    # else, just grab released exposures
     if kwargs.get('propid',None):
         ret['search'] += [['proposal',kwargs['propid'],'exact']]
         # This should work, but it doesn't yet
         #regex = '^(%s)'%('|'.join(np.atleast_1d(kwargs['propid'])))
         #ret['search'] += [['proposal',regex,'regex']]
-    else:
+
+    if kwargs.get('tstart',None) and kwargs.get('tstop',None):
+        # release date
+        kwargs['tstart'] = dateparse(str(kwargs['tstart']))
+        kwargs['tstop']  = dateparse(str(kwargs['tstop']))
+
         ret['search'] += [
             ["release_date", 
              '{:%Y-%m-%d}'.format(kwargs['tstart']), 
@@ -96,7 +101,7 @@ def get_query(**kwargs):
     return ret
 
 def get_table(query=None, limit=500000, **kwargs):
-    """ Get the table from NOIR Lab. 
+    """ Get the table from NOIRLab. 
 
     Parameters
     ----------
@@ -119,7 +124,8 @@ def get_table(query=None, limit=500000, **kwargs):
     logging.info("Downloading table...")
     logging.debug(url)
     logging.debug(query)
-    ret = requests.post(url,json=query)
+
+    ret = requests.post(url,json=query, verify=VERIFY)
     data = ret.json()
 
     metadata = data[0]
@@ -164,16 +170,15 @@ def get_token(email=None,password=None):
     url = URL + '/api/get_token/'
 
     if not email or not password:
-        services = get_desservices(section='db-noir')
+        services = get_desservices(section='db-noirlab')
         email    = services['user']
         password = services['password']
         
     auth = dict(email=email,password=password)
 
-    # May need verify=False if certificate invalid
-    r = requests.post(url, json=auth, verify=True)
+    r = requests.post(url, json=auth, verify=VERIFY)
     if r.status_code == 200:
-        token = r.content.decode("utf-8")
+        token = r.content.decode("utf-8").strip('"')
     else:
         logging.warn(token['detail'])
         token = None
@@ -263,35 +268,29 @@ def get_file_url(expnum,table=None):
 
 get_path = get_file_url
 
-def download_exposure(expnum,outfile=None,table=None,token=None):
-    data     = match_expnum(expnum,table)
-    origsize = data['filesize']
+def download_file(outfile,url,headers,progress=False):
+    """ Download a file from a url. """
 
-    if not outfile:
-        outfile = 'DECam_{:08d}.fits.fz'.format(expnum)
-
-    if not token: 
-        token = get_token()
-    
-    headers = dict(Authorization=token)
-    with open(outfile, 'wb') as f:
-        logging.info("Downloading %s..."%outfile)
-        url = create_url(data)
-        r = requests.get(url,headers=headers,stream=True)
-        total_length = r.headers.get('content-length')
-
-        if total_length is None: # no content length header
-            f.write(response.content)
-        else:
-            dl = 0
-            total_length = int(total_length)
-            for data in r.iter_content(chunk_size=4096):
-                dl += len(data)
-                f.write(data)
-                done = int(50 * dl / total_length)
-                sys.stdout.write("\r[%s%s]" % ('=' * done, ' ' * (50-done)) )
-                sys.stdout.flush()
-    logging.info("Done")
+    if not progress:
+        r = requests.get(url,headers=headers,verify=VERIFY)
+        with open(outfile, 'wb') as f: f.write(r.content)
+    else:
+        # Should be done this way, but bug in requests v2.9.1
+        # https://stackoverflow.com/q/44996807/4075339
+        #with requests.get(url,headers=headers,stream=True,verify=VERIFY) as r:
+        r=requests.get(url,headers=headers,stream=True,verify=VERIFY)
+        total_length = int(r.headers.get('content-length'))
+        print("Total length: %s"%total_length)
+        with open(outfile, 'wb') as f:
+            dl,done = 0,0
+            for chunk in r.iter_content(chunk_size=4096):
+                dl += len(chunk)
+                f.write(chunk)
+                if int(50*dl/total_length) != done:
+                    done = int(50 * dl / total_length)
+                    sys.stdout.write("\r[%s%s]" % ('=' * done, ' ' * (50-done)) )
+                    sys.stdout.flush()
+            print("")
 
     if r.status_code == 200:
         filesize = os.path.getsize(outfile)
@@ -303,21 +302,55 @@ def download_exposure(expnum,outfile=None,table=None,token=None):
             logging.warn(msg)
             os.remove(outfile)
         raise Exception(r.json()['message'])
+    
 
-    # Check the file size (might be unnecessary with wget)
+def download_exposure(expnum,outfile=None,table=None,token=None):
+    """ Download an exposure from the NOIRLab API. """
+
+    data     = match_expnum(expnum,table)
+    origsize = data['filesize']
+    origmd5  = data['md5sum']
+
+    if not outfile:
+        outfile = 'DECam_{:08d}.fits.fz'.format(expnum)
+
+    if not token: 
+        token = get_token()
+    
+    headers = dict(Authorization=token)
+    url = create_url(data)
+    logging.info("Downloading %s from %s ..."%(outfile,url))
+    download_file(outfile,url,headers,progress=False)
+
+    # Check the file size 
+    logging.info("Checking filesize")
     filesize = os.path.getsize(outfile)
     if origsize != filesize:
         msg = "Filesize does not match: [%i/%i]."%(filesize,origsize)
+        logging.warn(msg)
+        msg = "Removing failed download: {}".format(outfile)
+        logging.warn(msg)
         os.remove(outfile)
         raise Exception(msg)
     logging.debug("Filesize: %s MB"%(filesize//1024**2))
+
+    logging.info("Checking md5sum")
+    md5sum = hashlib.md5(open(outfile,'rb').read()).hexdigest()
+    if origmd5 != md5sum:
+        msg = "File md5sum does not match: [%i/%i]."%(md5sum,origmd5)
+        logging.warn(msg)
+        msg = "Removing failed download: {}".format(outfile)
+        logging.warn(msg)
+        os.remove(outfile)
+        raise Exception(msg)
+
     return outfile
 
 copy_exposure = download_exposure
 
 if __name__ == "__main__":
     from parser import Parser
-    description = "Interface to NOIR lab data archive"
+    description = "Interface to NOIRLab astro data archive"
     parser = Parser(description=description)
     args = parser.parse_args()
 
