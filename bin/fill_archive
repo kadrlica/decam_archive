@@ -26,10 +26,14 @@ def parser():
                         help='list of exposures to download')
     parser.add_argument('--table',
                         help='Exposure inventory table')
-    parser.add_argument('--tstart',default=None,type=int,
-                        help="start date (i.e., '20110101')")
+    parser.add_argument('--tstart',default=20121101,type=int,
+                        help="release date start (i.e., 20121101)")
     parser.add_argument('--tstop',default=None,type=int,
-                        help="stop date (i.e., '20200101')")
+                        help="release date stop (i.e., 20200101)")
+    parser.add_argument('-p','--propid',default=None,
+                        help='propid to select')
+    parser.add_argument('--exptime',default=30,type=float,
+                        help='minimum exposure time (s)')
     parser.add_argument('-a','--archive', default='all',
                         choices=['local','desar2','noao','noir','all'],
                         help='source archive')
@@ -52,12 +56,13 @@ if __name__ == "__main__":
         today = datetime.date.today().strftime("%Y%m%d")
         table = os.path.join(dirname,'archive_%s.npy'%today)
 
-    if not os.path.exists(table):
-        logging.info("Downloading exposure inventory...")
-        logging.info("Writing %s..."%table)
-        noir.download_table(table)
-    else:
-        logging.info("Using existing table: %s"%table)
+    #if not os.path.exists(table):
+    #    logging.info("Using existing table: %s"%table)
+
+    logging.info("Downloading exposure inventory...")
+    logging.info("Writing %s..."%table)
+    noir.download_table(table,tstart=args.tstart,tstop=args.tstop,
+                        propid=args.propid,exptime=args.exptime)
 
     explist = args.explist
     if not explist: explist = table
@@ -104,7 +109,7 @@ if __name__ == "__main__":
         # Build the command
         info = '({:>{width}}/{}): '.format(i+1,num,width=len(str(num)))
 
-        log = '-o %s '%os.path.join(logdir,'%s.log'%expnum) if logdir else ''
+        log = '-o %s '%os.path.join(logdir,'DECam_%08d.log'%expnum) if logdir else ''
         njobs = '-n %s '%args.njobs if args.njobs else ''
         sub = 'csub -q {queue} {njobs} {log}'.format(queue=args.queue,njobs=njobs,log=log)
         
