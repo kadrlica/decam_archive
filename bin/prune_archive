@@ -16,6 +16,12 @@ def parser():
     parser = Parser(description=__doc__)
     parser.add_argument('--outdir',default=BASEDIR,
                         help='directory of local archive')
+    parser.add_argument('--expmin',default=0,type=int,
+                        help='minimum exposure number to check')
+    parser.add_argument('--expmax',default=np.inf,type=int,
+                        help='maximum exposure number to check')
+    parser.add_argument('-l','--links',action='store_true',
+                        help='remove bad symlinks')
     parser.add_argument('-m','--min-size',default=250,type=float,
                         help='minimum file size (MB)')
     return parser
@@ -30,6 +36,8 @@ if __name__ == "__main__":
 
     logging.info("Loading local inventory...")
     inv = get_inventory(args.outdir)
+    inv = inv[(inv['expnum'] > args.expmin)&(inv['expnum'] < args.expmax)]
+
     files = inv['filename']
     nfiles = len(files)
     width = len(str(nfiles))
@@ -40,13 +48,13 @@ if __name__ == "__main__":
             info = '({:>{width}}/{}): {}'.format(i+1,nfiles,f,width=width)
             logging.info(info)
 
-        # Remove broken symlinks(?)
+        # Ignore (trust) links for now
+        if os.path.islink(f) and not args.links: continue
+
+        # Also removes broken symlinks
         if not os.path.exists(f):
             remove_file(f,args.dryrun)
             continue
-
-        # Ignore (trust) links for now
-        if os.path.islink(f): continue
 
         # Check for small files
         if os.path.getsize(f)/1024**2 < args.min_size:
