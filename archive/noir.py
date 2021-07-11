@@ -357,7 +357,7 @@ if __name__ == "__main__":
     table = 'table.csv'
     query = get_query()
     print(query)
-    print(download_table(table,get_noir_query()))
+    print(download_table(table,query))
     
     expnum = 797795
     #print(match_expnum(expnum,table)['url'])
