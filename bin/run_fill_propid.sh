@@ -30,7 +30,7 @@ export PATH=/home/s1/kadrlica/bin:$PATH # for csub
 
 for PROPID in ${PROPIDS}; do
     echo "Downloading propid: ${PROPID}"
-    fill_archive -v -a noir --njobs 2 --outdir=$OUTDIR  --propid=$PROPID --exptime 5 --table ./table/archive_${PROPID}.npy --logdir log/download
+    fill_archive -v --njobs 2 --outdir=$OUTDIR  --propid=$PROPID --exptime 5 --table ./table/archive_${PROPID}.npy --logdir log/download
 done
 
 # Don't load the exposure table now...

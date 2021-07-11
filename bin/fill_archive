@@ -13,7 +13,7 @@ import time
 from archive.parser import VerboseAction, Parser
 from archive.sispi import expnum2nite
 from archive import BASEDIR,DIRNAME,BASENAME
-from archive import local,noao,noir
+from archive import local,noao,noirlab
 from archive.utils import mkdir
 
 def parser():
@@ -34,9 +34,10 @@ def parser():
                         help='propid to select')
     parser.add_argument('--exptime',default=30,type=float,
                         help='minimum exposure time (s)')
-    parser.add_argument('-a','--archive', default='all',
-                        choices=['local','desar2','noao','noir','all'],
-                        help='source archive')
+    # DEPRECATED: 2021-07-11
+    #parser.add_argument('-a','--archive', default='all',
+    #                    choices=['local','desar2','noao','noirlab','all'],
+    #                    help='source archive')
     parser.add_argument('-s','--sleep',type=float,default=1,
                         help='time between submissions')
     parser.add_argument('--njobs',type=int,default=5,
@@ -61,7 +62,7 @@ if __name__ == "__main__":
 
     logging.info("Downloading exposure inventory...")
     logging.info("Writing %s..."%table)
-    noir.download_table(table,tstart=args.tstart,tstop=args.tstop,
+    noirlab.download_table(table,tstart=args.tstart,tstop=args.tstop,
                         propid=args.propid,exptime=args.exptime)
 
     explist = args.explist

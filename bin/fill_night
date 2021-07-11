@@ -14,7 +14,7 @@ import time
 from archive.parser import VerboseAction, Parser
 from archive.sispi import expnum2nite
 from archive import BASEDIR,DIRNAME,BASENAME
-from archive import local,noao,noir
+from archive import local,noao,noirlab
 from archive.utils import mkdir
 
 def parser():
@@ -45,12 +45,12 @@ if __name__ == "__main__":
 
     logging.info("Release period: %s -- %s..."%(tstart,tstop))
 
-    query=noir.get_query(tstart=tstart,tstop=tstop,propid=args.propid)
+    query=noirlab.get_query(tstart=tstart,tstop=tstop,propid=args.propid)
 
     dirname = mkdir('./table')
     table = os.path.join(dirname,'night_%s.npy'%tstart)
     logging.info("Creating %s..."%table)
-    noir.download_table(table,query=query)
+    noirlab.download_table(table,query=query)
     data = np.load(table)
 
     if not len(data):

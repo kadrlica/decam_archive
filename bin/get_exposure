@@ -13,7 +13,7 @@ def parser():
     parser.add_argument('expnum',type=int,help='Exposure number')
     parser.add_argument('outfile',nargs='?',help='Output file name')
     parser.add_argument('-a','--archive', default='all',
-                        choices=['local','desar2','noir','noao','all'],
+                        choices=['local','desar2','noirlab','noao','all'],
                         help='source archive')
     parser.add_argument('-f','--force',action='store_true',
                         help='force overwrite')
@@ -69,16 +69,16 @@ if __name__ == "__main__":
         if outfile and os.path.exists(outfile): 
             logging.info("Got file from desar2")
             sys.exit(0)
-    if args.archive in ('all','noir'):
+    if args.archive in ('all','noirlab'):
         try: 
-            from archive import noir
-            outfile = noir.download_exposure(args.expnum,args.outfile,
-                                             table=args.table)
+            from archive import noirlab
+            outfile = noirlab.download_exposure(args.expnum,args.outfile,
+                                                table=args.table)
         except Exception, e:
             logging.info(e)
-            logging.info("Failed to get file from NOIR Lab")
+            logging.info("Failed to get file from NOIRLab")
         if outfile and os.path.exists(outfile): 
-            logging.info("Got file from NOIR Lab")
+            logging.info("Got file from NOIRLab")
             sys.exit(0)
     if args.archive in ('noao'): #False?
         try: 
